@@ -10,6 +10,8 @@ type ActiveWindow = {
 
 export default function DesktopScene({ isUnlocking, isUnlocked, revealProgress, backgroundProgress }: { isUnlocking: boolean; isUnlocked: boolean; revealProgress: number; backgroundProgress: number }) {
   const [activeWindows, setActiveWindows] = useState<ActiveWindow[]>([]);
+  const [hoveredDockIcon, setHoveredDockIcon] = useState<string | null>(null);
+  const [isContactWindowOpen, setIsContactWindowOpen] = useState(false);
 
   const toggleWindow = (project: Project) => {
     setActiveWindows((prev) => {
@@ -41,11 +43,12 @@ export default function DesktopScene({ isUnlocking, isUnlocked, revealProgress, 
   const progress = Math.min(1, backgroundProgress);
   const shellOpacity = 1;
   const shellBlur = progress * 8;
+  const isContactHovered = hoveredDockIcon === '1-2';
 
   return (
     <div className="relative w-screen h-screen overflow-hidden text-white font-sans selection:bg-white/30">
       <div
-        className="absolute inset-0 z-0 bg-no-repeat bg-cover bg-center"
+        className="absolute inset-0 z-0 bg-no-repeat bg-cover bg-center transition-[filter] duration-200"
         style={{
           backgroundImage: 'url(/img/gen_20260413_0013.jpg)',
           opacity: shellOpacity,
@@ -55,34 +58,62 @@ export default function DesktopScene({ isUnlocking, isUnlocked, revealProgress, 
         <div className="absolute inset-0 bg-white/5" />
       </div>
 
-      <div className="relative z-10 w-full h-full p-8">
-        {projects.map((project, index) => (
-          <DesktopIcon
-            key={project.id}
-            project={project}
-            onClick={() => toggleWindow(project)}
-            show={show}
-            revealProgress={revealProgress}
-            revealDelay={index * 0.08}
-          />
-        ))}
+      <div
+        className="relative z-10 h-full w-full transition-all duration-200"
+        style={{
+          filter: isContactHovered ? 'blur(12px)' : undefined,
+          backdropFilter: isContactHovered ? 'saturate(0.9)' : undefined,
+        }}
+      >
+        <div className="relative z-10 w-full h-full p-8">
+          {projects.map((project, index) => (
+            <DesktopIcon
+              key={project.id}
+              project={project}
+              onClick={() => toggleWindow(project)}
+              show={show}
+              revealProgress={revealProgress}
+              revealDelay={index * 0.08}
+            />
+          ))}
+        </div>
+
+        <AnimatePresence>
+          {activeWindows.map((windowItem, index) => (
+            <Window
+              key={windowItem.project.id}
+              project={windowItem.project}
+              onClose={() => toggleWindow(windowItem.project)}
+              onFocus={() => bringToFront(windowItem.project.id)}
+              zIndex={50 + index}
+              offsetX={windowItem.offsetX}
+              offsetY={windowItem.offsetY}
+            />
+          ))}
+        </AnimatePresence>
       </div>
 
       <AnimatePresence>
-        {activeWindows.map((windowItem, index) => (
-          <Window
-            key={windowItem.project.id}
-            project={windowItem.project}
-            onClose={() => toggleWindow(windowItem.project)}
-            onFocus={() => bringToFront(windowItem.project.id)}
-            zIndex={50 + index}
-            offsetX={windowItem.offsetX}
-            offsetY={windowItem.offsetY}
-          />
-        ))}
+        {isContactWindowOpen && (
+          <ContactWindow onClose={() => setIsContactWindowOpen(false)} />
+        )}
       </AnimatePresence>
 
-      <Dock show={show} revealProgress={revealProgress} />
+      {isContactHovered && (
+        <div className="pointer-events-none absolute inset-0 z-30 bg-white/12 backdrop-blur-md" />
+      )}
+
+      <Dock
+        show={show}
+        revealProgress={revealProgress}
+        hoveredIcon={hoveredDockIcon}
+        onHoverChange={setHoveredDockIcon}
+        onIconClick={(iconName) => {
+          if (iconName === '1-2') {
+            setIsContactWindowOpen(true);
+          }
+        }}
+      />
     </div>
   );
 }
@@ -415,7 +446,83 @@ function Window(props: { project: Project; onClose: () => void; onFocus: () => v
   </>
   );
 }
-function Dock({ show, revealProgress }: { show: boolean; revealProgress: number }) {
+function ContactWindow({ onClose }: { onClose: () => void }) {
+  const contactItems = [
+    { icon: 'fa-regular fa-envelope', label: '邮箱', value: '13104899857@163.com', href: 'mailto:13104899857@163.com', hoverTitle: '点击即可发送邮件', hoverSubtitle: '将打开默认邮箱应用' },
+    { icon: 'fa-regular fa-message', label: '微信', value: 'WWxc010328' },
+    { icon: 'fa-solid fa-r', label: 'RunningHub', value: '小何AI', href: 'https://www.runninghub.cn/user-center/1877649407008182273/webapp?inviteCode=262e1ef1', hoverTitle: '点击即可前往主页', hoverSubtitle: '将在新标签页打开 runninghub.cn' },
+    { icon: 'fa-brands fa-bilibili', label: 'Bilibili', value: 'Zerinn', href: 'https://space.bilibili.com/', hoverTitle: '点击即可跳转主页', hoverSubtitle: '将在新标签页打开 Bilibili' },
+    { icon: 'fa-regular fa-circle-dot', label: 'LibLibAI', value: '小何AI', href: 'https://www.liblib.art/userpage/eddea37eeae745728c656e9774fd4381/publish/workflow', hoverTitle: '点击即可查看主页', hoverSubtitle: '将在新标签页打开 LibLibAI' },
+    { icon: 'fa-brands fa-github', label: 'GitHub', value: '@Zerinn', href: 'https://github.com/hzl199857-lab', hoverTitle: '点击即可查看主页', hoverSubtitle: '将在新标签页打开 GitHub' },
+  ];
+
+  return (
+    <motion.div
+      drag
+      dragMomentum={false}
+      initial={{ opacity: 0, scale: 0.94 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.96 }}
+      transition={{ type: 'spring', damping: 22, stiffness: 280, mass: 0.85 }}
+      data-project-window
+      className="absolute left-1/2 top-1/2 z-[120] flex max-h-[88vh] w-[min(880px,92vw)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[22px] border border-white/60 bg-[#f5f3ea]/95 text-black shadow-[0_30px_80px_rgba(0,0,0,0.28)] backdrop-blur-xl"
+    >
+      <div className="flex items-center justify-between border-b border-[#d8d2c4] bg-[#f3efe4]/90 px-4 py-2 select-none">
+        <div className="flex gap-2">
+          <button onClick={onClose} className="flex h-3 w-3 items-center justify-center rounded-full border border-[#e0443e] bg-[#ff5f56]" />
+          <button className="flex h-3 w-3 items-center justify-center rounded-full border border-[#dea123] bg-[#ffbd2e]" />
+          <button className="flex h-3 w-3 items-center justify-center rounded-full border border-[#1aab29] bg-[#27c93f]" />
+        </div>
+        <div className="flex items-center gap-2 text-xs font-bold tracking-[0.2em] text-[#6f6b80]">
+          <i className="fa-regular fa-address-card text-[#8f8a7c]"></i>
+          联系我
+        </div>
+        <div className="w-12"></div>
+      </div>
+
+      <div className="overflow-hidden px-8 py-10 md:px-12 md:py-12">
+        <div className="mb-10 text-center">
+          <h2 className="text-[76px] font-black leading-none tracking-[-0.06em] text-[#18182f] md:text-[112px]">你好</h2>
+          <p className="mt-4 text-[18px] font-medium text-[#77758d]">欢迎探讨与合作。</p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          {contactItems.map((item) => {
+            const card = (
+              <div className="group relative flex min-h-[168px] flex-col justify-between overflow-hidden rounded-[24px] border border-[#d9d3c6] bg-white/55 p-6 shadow-[0_18px_34px_rgba(56,43,22,0.08)] transition-all duration-200 hover:-translate-y-1 hover:bg-white/80 hover:shadow-[0_22px_40px_rgba(56,43,22,0.14)]">
+                {item.hoverTitle && (
+                  <div className="pointer-events-none absolute inset-x-4 bottom-4 z-20 rounded-[18px] bg-[#2e2b42] px-4 py-3 text-white opacity-0 shadow-[0_18px_30px_rgba(30,22,16,0.22)] transition-all duration-200 translate-y-3 group-hover:translate-y-0 group-hover:opacity-100">
+                    <div className="text-[14px] font-semibold leading-snug">{item.hoverTitle}</div>
+                    <div className="mt-1.5 text-[11px] text-white/65">{item.hoverSubtitle}</div>
+                  </div>
+                )}
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f3efe4] text-[22px] text-[#a8a39a]">
+                  <i className={item.icon}></i>
+                </div>
+                <div className="mt-8">
+                  <h3 className="text-[16px] font-bold text-[#1c1c34]">{item.label}</h3>
+                  <p className="mt-2 break-all text-[15px] text-[#8f8ca0]">{item.value}</p>
+                </div>
+              </div>
+            );
+
+            if (!item.href) {
+              return <div key={item.label}>{card}</div>;
+            }
+
+            return (
+              <a key={item.label} href={item.href} target="_blank" rel="noreferrer" className="block">
+                {card}
+              </a>
+            );
+          })}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function Dock({ show, revealProgress, hoveredIcon, onHoverChange, onIconClick }: { show: boolean; revealProgress: number; hoveredIcon: string | null; onHoverChange: (iconName: string | null) => void; onIconClick: (iconName: string) => void }) {
   const iconSize = 'h-[46px] w-[46px]';
   const dockGroups = [
     ['1-1', '1-2', '1-3', '1-4'],
@@ -440,8 +547,16 @@ function Dock({ show, revealProgress }: { show: boolean; revealProgress: number 
                 <div
                   key={iconName}
                   className="group relative flex h-[44px] w-[44px] cursor-pointer items-end justify-center transition-all duration-200 hover:-translate-y-2"
-                  title={iconName}
+                  onMouseEnter={() => onHoverChange(iconName)}
+                  onMouseLeave={() => onHoverChange(null)}
+                  onClick={() => onIconClick(iconName)}
                 >
+                  {iconName === '1-2' && hoveredIcon === '1-2' && (
+                    <div className="pointer-events-none absolute -top-12 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white px-3 py-1.5 text-[12px] font-semibold text-gray-900 shadow-[0_10px_24px_rgba(0,0,0,0.18)]">
+                      联系我~
+                      <div className="absolute left-1/2 top-full h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rotate-45 bg-white"></div>
+                    </div>
+                  )}
                   <img
                     src={`/dock-icons/${iconName}.png`}
                     alt={iconName}
