@@ -1,0 +1,463 @@
+import React, { useEffect, useState } from 'react';
+import { motion, AnimatePresence, useDragControls } from 'motion/react';
+import { projects, Project, PreviewItem } from '../data';
+
+type ActiveWindow = {
+  project: Project;
+  offsetX: number;
+  offsetY: number;
+};
+
+export default function DesktopScene({ isUnlocking, isUnlocked, revealProgress, backgroundProgress }: { isUnlocking: boolean; isUnlocked: boolean; revealProgress: number; backgroundProgress: number }) {
+  const [activeWindows, setActiveWindows] = useState<ActiveWindow[]>([]);
+
+  const toggleWindow = (project: Project) => {
+    setActiveWindows((prev) => {
+      const isWindowOpen = prev.some((w) => w.project.id === project.id);
+      if (isWindowOpen) {
+        return prev.filter((w) => w.project.id !== project.id);
+      }
+
+      const randomOffsetX = Math.round((Math.random() - 0.5) * 180);
+      const randomOffsetY = Math.round(-120 + Math.random() * 90);
+
+      return [...prev, { project, offsetX: randomOffsetX, offsetY: randomOffsetY }];
+    });
+  };
+
+  const bringToFront = (projectId: string) => {
+    setActiveWindows((prev) => {
+      const windowIndex = prev.findIndex((w) => w.project.id === projectId);
+      if (windowIndex === -1 || windowIndex === prev.length - 1) return prev;
+
+      const newWindows = [...prev];
+      const [windowProject] = newWindows.splice(windowIndex, 1);
+      newWindows.push(windowProject);
+      return newWindows;
+    });
+  };
+
+  const show = isUnlocking || isUnlocked;
+  const progress = Math.min(1, backgroundProgress);
+  const shellOpacity = 1;
+  const shellBlur = progress * 8;
+
+  return (
+    <div className="relative w-screen h-screen overflow-hidden text-white font-sans selection:bg-white/30">
+      <div
+        className="absolute inset-0 z-0 bg-no-repeat bg-cover bg-center"
+        style={{
+          backgroundImage: 'url(/img/gen_20260413_0013.jpg)',
+          opacity: shellOpacity,
+          filter: `blur(${shellBlur}px)`,
+        }}
+      >
+        <div className="absolute inset-0 bg-white/5" />
+      </div>
+
+      <div className="relative z-10 w-full h-full p-8">
+        {projects.map((project, index) => (
+          <DesktopIcon
+            key={project.id}
+            project={project}
+            onClick={() => toggleWindow(project)}
+            show={show}
+            revealProgress={revealProgress}
+            revealDelay={index * 0.08}
+          />
+        ))}
+      </div>
+
+      <AnimatePresence>
+        {activeWindows.map((windowItem, index) => (
+          <Window
+            key={windowItem.project.id}
+            project={windowItem.project}
+            onClose={() => toggleWindow(windowItem.project)}
+            onFocus={() => bringToFront(windowItem.project.id)}
+            zIndex={50 + index}
+            offsetX={windowItem.offsetX}
+            offsetY={windowItem.offsetY}
+          />
+        ))}
+      </AnimatePresence>
+
+      <Dock show={show} revealProgress={revealProgress} />
+    </div>
+  );
+}
+
+function DesktopIcon(props: { project: Project; onClick: () => void; show: boolean; revealProgress: number; revealDelay: number; key?: React.Key }) {
+  const { project, onClick, show, revealProgress, revealDelay } = props;
+  const [isDragging, setIsDragging] = useState(false);
+
+  return (
+    <motion.div
+      drag
+      dragMomentum={false}
+      onDragStart={() => setIsDragging(true)}
+      onDragEnd={() => {
+        setTimeout(() => setIsDragging(false), 150);
+      }}
+      className="absolute flex flex-col items-center justify-start gap-1.5 cursor-pointer group"
+      style={{
+        left: `${project.x}%`,
+        top: `${project.y}%`,
+        marginLeft: '-64px',
+        marginTop: '-48px',
+        width: '128px',
+        zIndex: 10,
+        pointerEvents: revealProgress > 0.92 ? 'auto' : 'none',
+      }}
+      initial={{ opacity: 0, y: -48, scale: 0.94 }}
+      animate={show ? { opacity: revealProgress, y: (1 - revealProgress) * -10, scale: 0.985 + revealProgress * 0.015 } : { opacity: 0, y: -20, scale: 0.96 }}
+      transition={{ type: 'spring', damping: 20, stiffness: 180, mass: 0.95, delay: revealDelay }}
+      onClick={() => {
+        if (!isDragging) onClick();
+      }}
+    >
+      <div className="relative p-[10px] rounded group-hover:bg-black/30 group-hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.3)] transition-all duration-200 pointer-events-none inline-flex items-center justify-center">
+        <div className="overflow-hidden rounded-sm shadow-md transition-transform duration-200 group-hover:scale-[1.15] flex">
+          <img src={project.iconSrc} alt={project.title} className="max-w-[80px] max-h-[64px] w-auto h-auto object-contain block" draggable={false} />
+        </div>
+      </div>
+      <span className="text-[11px] font-bold text-center text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] px-1.5 py-0.5 rounded-sm leading-tight max-w-full break-words pointer-events-none group-hover:bg-[#0058d0] group-hover:text-white group-hover:drop-shadow-none transition-all duration-200 mt-0 group-hover:mt-2">
+        {project.title}
+      </span>
+    </motion.div>
+  );
+}
+
+function Window(props: { project: Project; onClose: () => void; onFocus: () => void; zIndex: number; offsetX: number; offsetY: number; key?: React.Key }) {
+  const { project, onClose, onFocus, zIndex, offsetX, offsetY } = props;
+  const dragControls = useDragControls();
+  const [showPreviews, setShowPreviews] = useState(false);
+  const [lightboxPreview, setLightboxPreview] = useState<PreviewItem | null>(null);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setShowPreviews(true), 140);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!lightboxPreview) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setLightboxPreview(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [lightboxPreview]);
+
+  const openLightbox = (preview: PreviewItem) => {
+    if (preview.type === 'image') {
+      setLightboxPreview(preview);
+    }
+  };
+
+  const previewImageClassName = 'w-full rounded-xl shadow-sm object-contain bg-black/5 border border-gray-100 cursor-zoom-in';
+  const previewImageProps = (preview: PreviewItem) => ({
+    onClick: () => openLightbox(preview),
+    onContextMenu: (event: React.MouseEvent<HTMLImageElement>) => {
+      event.preventDefault();
+      openLightbox(preview);
+    },
+  });
+
+  return (
+    <>
+      <motion.div
+      drag
+      dragControls={dragControls}
+      dragListener={false}
+      dragMomentum={false}
+      dragConstraints={{ left: -300, right: 300, top: -200, bottom: 200 }}
+      initial={{ opacity: 0, scale: 0.94 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.94 }}
+      transition={{ type: 'spring', damping: 20, stiffness: 280, mass: 0.8 }}
+      onPointerDownCapture={onFocus}
+      data-project-window
+      className={`absolute max-w-[94vw] max-h-[85vh] bg-[#f5f5f5] text-black rounded-xl shadow-xl overflow-hidden flex flex-col border border-white/50 will-change-transform ${project.id === 'ai-live-drama-case' ? 'w-[1020px]' : 'w-[680px]'}`}
+      style={{
+        left: project.id === 'ai-live-drama-case' ? 'max(3vw, calc(50vw - 510px))' : 'max(3vw, calc(50vw - 340px))',
+        top: 'max(3vh, calc(50vh - 420px))',
+        x: offsetX,
+        y: offsetY,
+        transformOrigin: 'center center',
+        zIndex,
+        backfaceVisibility: 'hidden',
+      }}
+    >
+      <div
+        className="flex items-center justify-between px-4 py-2 bg-[#f6f6f6] border-b border-gray-300 select-none cursor-grab active:cursor-grabbing shrink-0"
+        onPointerDown={(e) => dragControls.start(e)}
+      >
+        <div className="flex gap-2">
+          <button onClick={onClose} className="w-3 h-3 rounded-full bg-[#ff5f56] border border-[#e0443e] hover:bg-[#ff5f56]/80 flex items-center justify-center group">
+            <i className="fa-solid fa-xmark text-[6px] text-black/50 opacity-0 group-hover:opacity-100"></i>
+          </button>
+          <button className="w-3 h-3 rounded-full bg-[#ffbd2e] border border-[#dea123] hover:bg-[#ffbd2e]/80 flex items-center justify-center group">
+            <i className="fa-solid fa-minus text-[6px] text-black/50 opacity-0 group-hover:opacity-100"></i>
+          </button>
+          <button className="w-3 h-3 rounded-full bg-[#27c93f] border border-[#1aab29] hover:bg-[#27c93f]/80 flex items-center justify-center group">
+            <i className="fa-solid fa-up-right-and-down-left-from-center text-[5px] text-black/50 opacity-0 group-hover:opacity-100"></i>
+          </button>
+        </div>
+        <div className="flex items-center gap-2 text-xs font-bold text-gray-800 tracking-wide">
+          <i className="fa-regular fa-folder-open text-gray-500"></i>
+          关于项目: {project.title}
+        </div>
+        <div className="w-12"></div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto no-scrollbar bg-white/95 backdrop-blur-md flex flex-col p-6">
+        <div className="flex items-start gap-4 mb-6">
+          <div className="w-16 h-16 shrink-0 flex items-center justify-center bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
+            <img src={project.iconSrc} alt={project.title} className="max-w-full max-h-full object-contain" />
+          </div>
+          <div className="flex flex-col pt-1">
+            <h2 className="text-[18px] font-bold text-gray-900 leading-tight">{project.title}</h2>
+            <p className="text-sm text-gray-500 font-medium mt-0.5">{project.details.topic.split(' > ')[0]}</p>
+          </div>
+        </div>
+
+        <div className="text-[13px] text-gray-700 leading-relaxed mb-6">{project.description}</div>
+
+        <div className="text-[13px] bg-gray-50/50 rounded-lg p-4 border border-gray-100 mb-6">
+          <h3 className="font-bold mb-1.5 text-gray-900">详情信息:</h3>
+          <p className="text-gray-600">标签: {project.details.topic}</p>
+        </div>
+
+        <motion.div
+          className="flex flex-col"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: showPreviews ? 1 : 0 }}
+          transition={{ duration: 0.22, ease: 'easeOut' }}
+        >
+          <h3 className="font-bold text-[13px] text-gray-900 mb-4">预览内容:</h3>
+          <div className="flex flex-col gap-6">
+            {(() => {
+              const previewRows = project.previews.reduce<Array<{ type: 'single' | 'group'; items: typeof project.previews }>>((rows, preview) => {
+                if (preview.rowGroup) {
+                  const lastRow = rows[rows.length - 1];
+                  if (lastRow?.type === 'group' && lastRow.items[0]?.rowGroup === preview.rowGroup) {
+                    lastRow.items.push(preview);
+                  } else {
+                    rows.push({ type: 'group', items: [preview] });
+                  }
+                } else {
+                  rows.push({ type: 'single', items: [preview] });
+                }
+                return rows;
+              }, []);
+
+              return project.id === 'ai-tesla-studio' && project.previews.length > 1 ? (
+                <>
+                  <div className="flex flex-col gap-3">
+                    {project.previewIntro && (
+                      <div className="text-[13px] bg-gray-50/80 rounded-lg p-4 border border-gray-100">
+                        <h4 className="font-bold mb-1.5 text-gray-900">展示说明:</h4>
+                        <p className="text-gray-600 leading-relaxed whitespace-pre-line">{project.previewIntro}</p>
+                      </div>
+                    )}
+                    <img src={project.previews[0].src} alt={`${project.title} preview 1`} className={previewImageClassName} loading="lazy" decoding="async" {...previewImageProps(project.previews[0])} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    {project.previews.slice(1, 5).map((preview, idx) => (
+                      <img
+                        key={idx + 1}
+                        src={preview.src}
+                        alt={`${project.title} preview ${idx + 2}`}
+                        className={previewImageClassName}
+                        loading="lazy"
+                        decoding="async"
+                        {...previewImageProps(preview)}
+                      />
+                    ))}
+                  </div>
+                  {project.previews.length > 5 && (
+                    <div className="grid grid-cols-2 gap-4">
+                      {project.previews.slice(5).map((preview, idx) => (
+                        <img
+                          key={idx + 5}
+                          src={preview.src}
+                          alt={`${project.title} preview ${idx + 6}`}
+                          className={previewImageClassName}
+                          loading="lazy"
+                          decoding="async"
+                          {...previewImageProps(preview)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  {project.previewIntro && (
+                    <div className="text-[13px] bg-gray-50/80 rounded-lg p-4 border border-gray-100">
+                      <h4 className="font-bold mb-1.5 text-gray-900">展示说明:</h4>
+                      <p className="text-gray-600 leading-relaxed whitespace-pre-line">{project.previewIntro}</p>
+                    </div>
+                  )}
+                  {previewRows.map((row, rowIdx) => (
+                    row.type === 'group' ? (
+                      <div key={`group-${rowIdx}`} className={`grid gap-4 ${row.items.length === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                        {row.items.map((preview, itemIdx) => (
+                          preview.type === 'video' ? (
+                            <div
+                              key={itemIdx}
+                              className="flex justify-center rounded-xl overflow-hidden bg-black border border-gray-100 shadow-sm w-full"
+                              style={{ aspectRatio: preview.aspectRatio ?? (preview.portrait ? '9 / 16' : '16 / 9') }}
+                            >
+                              <video
+                                src={preview.src}
+                                controls
+                                playsInline
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <img
+                              key={itemIdx}
+                              src={preview.src}
+                              alt={`${project.title} preview ${rowIdx + itemIdx + 1}`}
+                              className={previewImageClassName}
+                              loading="lazy"
+                              decoding="async"
+                              {...previewImageProps(preview)}
+                            />
+                          )
+                        ))}
+                      </div>
+                    ) : (
+                      <div key={`single-${rowIdx}`} className="flex flex-col gap-3">
+                        {row.items[0].type === 'embed' ? (
+                          <div className="overflow-hidden rounded-xl shadow-sm border border-gray-100 bg-black aspect-video">
+                            <iframe
+                              src={row.items[0].src}
+                              title={row.items[0].title ?? `${project.title} preview ${rowIdx + 1}`}
+                              className="h-full w-full"
+                              allowFullScreen
+                              loading="lazy"
+                              referrerPolicy="strict-origin-when-cross-origin"
+                            />
+                          </div>
+                        ) : row.items[0].type === 'video' ? (
+                          <div
+                            className="flex justify-center rounded-xl overflow-hidden bg-black border border-gray-100 shadow-sm w-full"
+                            style={{ aspectRatio: row.items[0].aspectRatio ?? (row.items[0].portrait ? '9 / 16' : '16 / 9') }}
+                          >
+                            <video
+                              src={row.items[0].src}
+                              controls
+                              playsInline
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ) : row.items[0].type === 'note' ? (
+                          <div className="text-[13px] bg-gray-50/80 rounded-lg p-4 border border-gray-100">
+                            <h4 className="font-bold mb-1.5 text-gray-900">展示说明:</h4>
+                            <p className="text-gray-600 leading-relaxed whitespace-pre-line">{row.items[0].title}</p>
+                          </div>
+                        ) : (
+                          <img src={row.items[0].src} alt={`${project.title} preview ${rowIdx + 1}`} className={previewImageClassName} loading="lazy" decoding="async" {...previewImageProps(row.items[0])} />
+                        )}
+                      </div>
+                    )
+                  ))}
+                </>
+              );
+            })()}
+          </div>
+        </motion.div>
+      </div>
+    </motion.div>
+
+    <AnimatePresence>
+      {lightboxPreview && (
+        <motion.div
+          data-lightbox
+          className="fixed inset-0 z-[999] flex items-center justify-center bg-black/75 p-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18, ease: 'easeOut' }}
+          onClick={() => setLightboxPreview(null)}
+          onContextMenu={(event) => event.preventDefault()}
+        >
+          <motion.div
+            className="relative max-w-[92vw] max-h-[92vh]"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+          >
+            <button
+              type="button"
+              onClick={() => setLightboxPreview(null)}
+              className="absolute -top-4 -right-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-black shadow-lg transition hover:bg-white"
+            >
+              <i className="fa-solid fa-xmark text-base"></i>
+            </button>
+            <img
+              src={lightboxPreview.src}
+              alt={lightboxPreview.title ?? `${project.title} enlarged preview`}
+              className="max-w-[92vw] max-h-[92vh] rounded-2xl object-contain shadow-2xl"
+            />
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  </>
+  );
+}
+function Dock({ show, revealProgress }: { show: boolean; revealProgress: number }) {
+  const iconSize = 'h-[46px] w-[46px]';
+  const dockGroups = [
+    ['1-1', '1-2', '1-3', '1-4'],
+    ['2-1', '2-2'],
+    ['3-1', '3-2'],
+    ['4-1'],
+  ];
+
+  return (
+    <motion.div
+      className="absolute bottom-10 left-1/2 -translate-x-1/2 z-40"
+      initial={{ opacity: 0, y: 52, scale: 0.94 }}
+      animate={show ? { opacity: revealProgress, y: (1 - revealProgress) * 26, scale: 0.98 + revealProgress * 0.02 } : { opacity: 0, y: 30, scale: 0.95 }}
+      transition={{ type: 'spring', damping: 22, stiffness: 165, mass: 1, delay: 0.24 }}
+      style={{ pointerEvents: revealProgress > 0.92 ? 'auto' : 'none' }}
+    >
+      <div className="flex items-end justify-center px-8 py-2.5 rounded-[22px] border border-white/45 bg-white/18 backdrop-blur-[18px] shadow-[0_14px_28px_rgba(0,0,0,0.18)]">
+        {dockGroups.map((group, groupIndex) => (
+          <React.Fragment key={groupIndex}>
+            <div className="flex items-end gap-3">
+              {group.map((iconName) => (
+                <div
+                  key={iconName}
+                  className="group relative flex h-[44px] w-[44px] cursor-pointer items-end justify-center transition-all duration-200 hover:-translate-y-2"
+                  title={iconName}
+                >
+                  <img
+                    src={`/dock-icons/${iconName}.png`}
+                    alt={iconName}
+                    className={`${iconSize} rounded-[10px] object-contain drop-shadow-[0_6px_9px_rgba(0,0,0,0.15)] transition-all duration-200 group-hover:h-[52px] group-hover:w-[52px]`}
+                    draggable={false}
+                  />
+                  <div className="absolute -bottom-1.5 h-[4px] w-[4px] rounded-full bg-black/55 opacity-0 transition-opacity duration-200 group-hover:opacity-100"></div>
+                </div>
+              ))}
+            </div>
+            {groupIndex < dockGroups.length - 1 && (
+              <div className="mx-3 mb-1 h-[34px] w-px shrink-0 rounded-full bg-black/12 shadow-[1px_0_0_rgba(255,255,255,0.25)]"></div>
+            )}
+          </React.Fragment>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
