@@ -5,6 +5,18 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
+@keyframes scroll-hint-drift {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.32;
+  }
+  50% {
+    transform: translateY(10px);
+    opacity: 1;
+  }
+}
+
 /* Hide scrollbar for Chrome, Safari and Opera */
 .no-scrollbar::-webkit-scrollbar {
   display: none;

@@ -17,6 +17,9 @@ export default function LockScreen({ unlockProgress, isUnlocking, isUnlocked, im
   const footerOpacity = Math.max(0, 1 - progress * 1.8);
   const shellOpacity = 1 - Math.min(1, Math.max(0, (progress - 0.82) / 0.18));
   const hideLockCopy = progress >= 0.58;
+  const scrollHintFadeProgress = Math.min(1, Math.max(0, (progress - 0.05) / 0.2));
+  const scrollHintOpacity = Math.max(0, 1 - scrollHintFadeProgress);
+  const scrollHintTranslateY = scrollHintFadeProgress * 18;
 
   return (
     <div
@@ -61,6 +64,27 @@ export default function LockScreen({ unlockProgress, isUnlocking, isUnlocked, im
             </div>
           </div>
         </section>
+
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-22 z-20 flex flex-col items-center justify-center mix-blend-difference transition-[opacity,transform] duration-300 md:bottom-28"
+          style={{
+            opacity: scrollHintOpacity,
+            transform: `translateY(${scrollHintTranslateY}px)`,
+          }}
+          aria-hidden={progress > 0.24}
+        >
+          <p className="text-[10px] font-medium tracking-[0.28em] text-white uppercase md:text-[11px]">
+            向下滚动进入桌面
+          </p>
+          <div className="mt-3 flex h-8 w-4 items-start justify-center overflow-hidden">
+            <span
+              className="block h-4 w-px bg-white"
+              style={{
+                animation: 'scroll-hint-drift 1.6s ease-in-out infinite',
+              }}
+            />
+          </div>
+        </div>
 
         <footer className="absolute bottom-6 md:bottom-10 left-0 w-full flex flex-col gap-1 md:gap-[6px] z-10 transition-opacity duration-300" style={{ opacity: footerOpacity }}>
           <div className="w-full h-[2px] md:h-[3px] bg-black"></div>
