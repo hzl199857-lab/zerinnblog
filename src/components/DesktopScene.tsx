@@ -451,7 +451,7 @@ function ContactWindow({ onClose }: { onClose: () => void }) {
     { icon: 'fa-regular fa-envelope', label: '邮箱', value: '13104899857@163.com', href: 'mailto:13104899857@163.com', hoverTitle: '点击即可发送邮件', hoverSubtitle: '将打开默认邮箱应用' },
     { icon: 'fa-regular fa-message', label: '微信', value: 'WWxc010328' },
     { icon: 'fa-solid fa-r', label: 'RunningHub', value: '小何AI', href: 'https://www.runninghub.cn/user-center/1877649407008182273/webapp?inviteCode=262e1ef1', hoverTitle: '点击即可前往主页', hoverSubtitle: '将在新标签页打开 runninghub.cn' },
-    { icon: 'fa-brands fa-bilibili', label: 'Bilibili', value: 'Zerinn', href: 'https://space.bilibili.com/', hoverTitle: '点击即可跳转主页', hoverSubtitle: '将在新标签页打开 Bilibili' },
+    { icon: 'fa-brands fa-tiktok', label: '抖音', value: '小何AIGC', href: 'https://v.douyin.com/U0pFkGM5cDo/', hoverTitle: '点击即可跳转主页', hoverSubtitle: '将在新标签页打开 Douyin' },
     { icon: 'fa-regular fa-circle-dot', label: 'LibLibAI', value: '小何AI', href: 'https://www.liblib.art/userpage/eddea37eeae745728c656e9774fd4381/publish/workflow', hoverTitle: '点击即可查看主页', hoverSubtitle: '将在新标签页打开 LibLibAI' },
     { icon: 'fa-brands fa-github', label: 'GitHub', value: '@Zerinn', href: 'https://github.com/hzl199857-lab', hoverTitle: '点击即可查看主页', hoverSubtitle: '将在新标签页打开 GitHub' },
   ];
