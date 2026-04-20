@@ -552,10 +552,17 @@ function Dock({ show, revealProgress, hoveredIcon, onHoverChange, onIconClick }:
                   onClick={() => onIconClick(iconName)}
                 >
                   {iconName === '1-2' && hoveredIcon === '1-2' && (
-                    <div className="pointer-events-none absolute -top-12 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white px-3 py-1.5 text-[12px] font-semibold text-gray-900 shadow-[0_10px_24px_rgba(0,0,0,0.18)]">
-                      联系我~
-                      <div className="absolute left-1/2 top-full h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rotate-45 bg-white"></div>
-                    </div>
+                    <motion.div
+                      className="pointer-events-none absolute -top-16 left-1/2 flex -translate-x-1/2 flex-col items-center"
+                      initial={{ opacity: 0.92, y: 0, scale: 1 }}
+                      animate={hoveredIcon === '1-2' ? { opacity: [0.92, 1, 0.92], y: [0, -4, 0], scale: [1, 1.06, 1] } : { opacity: 0, y: 0, scale: 0.98 }}
+                      transition={{ duration: 1.9, ease: 'easeInOut', repeat: Infinity }}
+                    >
+                      <div className="whitespace-nowrap rounded-[18px] border border-white/80 bg-white px-4 py-2 text-[14px] font-bold tracking-[0.01em] text-[#121212] shadow-[0_14px_30px_rgba(0,0,0,0.22)]">
+                        联系我~
+                      </div>
+                      <div className="-mt-1.5 h-3.5 w-3.5 rotate-45 rounded-[3px] border-r border-b border-black/5 bg-white shadow-[4px_4px_10px_rgba(0,0,0,0.06)]"></div>
+                    </motion.div>
                   )}
                   <img
                     src={`/dock-icons/${iconName}.png`}
