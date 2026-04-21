@@ -48,7 +48,7 @@ export default function DesktopScene({ isUnlocking, isUnlocked, revealProgress, 
   return (
     <div className="relative w-screen h-screen overflow-hidden text-white font-sans selection:bg-white/30">
       <div
-        className="absolute inset-0 z-0 bg-no-repeat bg-cover bg-center transition-[filter] duration-200"
+        className="absolute inset-0 z-0 bg-no-repeat bg-cover bg-center"
         style={{
           backgroundImage: 'url(/img/gen_20260413_0013.jpg)',
           opacity: shellOpacity,

@@ -4,6 +4,11 @@ import assert from 'node:assert/strict';
 
 const file = readFileSync(new URL('./DesktopScene.tsx', import.meta.url), 'utf8');
 
+test('desktop background does not animate blur during unlock handoff', () => {
+  assert.match(file, /backgroundImage: 'url\(\/img\/gen_20260413_0013\.jpg\)'/);
+  assert.doesNotMatch(file, /transition-\[filter\]/);
+});
+
 test('contact dock bubble uses larger label sizing', () => {
   assert.match(file, /text-\[14px\][^\n]*font-bold/);
   assert.match(file, /px-4 py-2/);
