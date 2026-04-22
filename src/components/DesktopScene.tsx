@@ -457,9 +457,9 @@ function Window(props: { project: Project; onClose: () => void; onFocus: () => v
 }
 function SafariWindow({ onClose }: { onClose: () => void }) {
   const safariTabs = [
-    { id: 'kv', label: 'KV', url: 'https://kv.zerinnai.online/', scale: 0.84 },
-    { id: 'cover', label: 'Cover', url: 'https://cover.zerinnai.online/', scale: 0.72 },
-    { id: 'home', label: '官网', url: 'https://www.zerinnai.online/', scale: 0.9 },
+    { id: 'kv', label: '一键详情页生成器', url: 'https://kv.zerinnai.online/', scale: 0.84 },
+    { id: 'cover', label: '一键视频封面生成器', url: 'https://cover.zerinnai.online/', scale: 0.72 },
+    { id: 'home', label: '无限画布', url: 'https://www.zerinnai.online/', scale: 0.9 },
   ] as const;
   const [activeTabId, setActiveTabId] = useState<(typeof safariTabs)[number]['id']>('kv');
   const activeTab = safariTabs.find((tab) => tab.id === activeTabId) ?? safariTabs[0];
