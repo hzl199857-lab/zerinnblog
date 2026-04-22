@@ -12,6 +12,7 @@ export default function DesktopScene({ isUnlocking, isUnlocked, revealProgress, 
   const [activeWindows, setActiveWindows] = useState<ActiveWindow[]>([]);
   const [hoveredDockIcon, setHoveredDockIcon] = useState<string | null>(null);
   const [isContactWindowOpen, setIsContactWindowOpen] = useState(false);
+  const [isSafariWindowOpen, setIsSafariWindowOpen] = useState(false);
 
   const toggleWindow = (project: Project) => {
     setActiveWindows((prev) => {
@@ -43,7 +44,7 @@ export default function DesktopScene({ isUnlocking, isUnlocked, revealProgress, 
   const progress = Math.min(1, backgroundProgress);
   const shellOpacity = 1;
   const shellBlur = progress * 8;
-  const isContactHovered = hoveredDockIcon === '1-2';
+  const isDockTooltipHovered = hoveredDockIcon === '1-1' || hoveredDockIcon === '1-2';
 
   return (
     <div className="relative w-screen h-screen overflow-hidden text-white font-sans selection:bg-white/30">
@@ -61,8 +62,8 @@ export default function DesktopScene({ isUnlocking, isUnlocked, revealProgress, 
       <div
         className="relative z-10 h-full w-full transition-all duration-200"
         style={{
-          filter: isContactHovered ? 'blur(12px)' : undefined,
-          backdropFilter: isContactHovered ? 'saturate(0.9)' : undefined,
+          filter: isDockTooltipHovered ? 'blur(12px)' : undefined,
+          backdropFilter: isDockTooltipHovered ? 'saturate(0.9)' : undefined,
         }}
       >
         <div className="relative z-10 w-full h-full p-8">
@@ -94,12 +95,16 @@ export default function DesktopScene({ isUnlocking, isUnlocked, revealProgress, 
       </div>
 
       <AnimatePresence>
+        {isSafariWindowOpen && <SafariWindow onClose={() => setIsSafariWindowOpen(false)} />}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {isContactWindowOpen && (
           <ContactWindow onClose={() => setIsContactWindowOpen(false)} />
         )}
       </AnimatePresence>
 
-      {isContactHovered && (
+      {isDockTooltipHovered && (
         <div className="pointer-events-none absolute inset-0 z-30 bg-white/12 backdrop-blur-md" />
       )}
 
@@ -109,6 +114,10 @@ export default function DesktopScene({ isUnlocking, isUnlocked, revealProgress, 
         hoveredIcon={hoveredDockIcon}
         onHoverChange={setHoveredDockIcon}
         onIconClick={(iconName) => {
+          if (iconName === '1-1') {
+            setIsSafariWindowOpen(true);
+          }
+
           if (iconName === '1-2') {
             setIsContactWindowOpen(true);
           }
@@ -446,6 +455,85 @@ function Window(props: { project: Project; onClose: () => void; onFocus: () => v
   </>
   );
 }
+function SafariWindow({ onClose }: { onClose: () => void }) {
+  const safariTabs = [
+    { id: 'kv', label: 'KV', url: 'https://kv.zerinnai.online/', scale: 0.84 },
+    { id: 'cover', label: 'Cover', url: 'https://cover.zerinnai.online/', scale: 0.72 },
+    { id: 'home', label: '官网', url: 'https://www.zerinnai.online/', scale: 0.9 },
+  ] as const;
+  const [activeTabId, setActiveTabId] = useState<(typeof safariTabs)[number]['id']>('kv');
+  const activeTab = safariTabs.find((tab) => tab.id === activeTabId) ?? safariTabs[0];
+  const iframeScale = activeTab.scale;
+  const iframeWidth = `${100 / iframeScale}%`;
+  const iframeHeight = `${100 / iframeScale}%`;
+
+  return (
+    <motion.div
+      drag
+      dragMomentum={false}
+      initial={{ opacity: 0, scale: 0.94 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.96 }}
+      transition={{ type: 'spring', damping: 22, stiffness: 280, mass: 0.85 }}
+      data-project-window
+      className="absolute left-1/2 top-1/2 z-[120] flex h-[min(1090px,96vh)] w-[min(1240px,97vw)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[22px] border border-white/60 bg-[#f6f6f6]/95 text-black shadow-[0_30px_80px_rgba(0,0,0,0.28)] backdrop-blur-xl"
+    >
+      <div className="flex items-center gap-3 border-b border-[#d8d2c4] bg-[#ece9e1]/95 px-4 py-2 select-none">
+        <div className="flex gap-2">
+          <button onClick={onClose} className="flex h-3 w-3 items-center justify-center rounded-full border border-[#e0443e] bg-[#ff5f56]" />
+          <button className="flex h-3 w-3 items-center justify-center rounded-full border border-[#dea123] bg-[#ffbd2e]" />
+          <button className="flex h-3 w-3 items-center justify-center rounded-full border border-[#1aab29] bg-[#27c93f]" />
+        </div>
+        <div className="flex min-w-0 flex-1 items-center justify-center gap-3">
+          <div className="flex items-center gap-2 text-sm font-semibold text-[#5f5b69]">
+            <img src="/dock-icons/1-1.png" alt="Safari" className="h-5 w-5 rounded-[6px]" draggable={false} />
+            <span>Safari</span>
+          </div>
+          <div className="min-w-[220px] max-w-[680px] flex-1 rounded-full border border-[#d7d1c5] bg-white/90 px-4 py-1.5 text-center text-[13px] text-[#5a5568] shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)]">
+            {activeTab.url}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 border-b border-[#ddd7ca] bg-[#f2efe8]/95 px-4 py-2">
+        {safariTabs.map((tab) => {
+          const isActive = tab.id === activeTab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTabId(tab.id)}
+              className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${isActive ? 'bg-white text-[#2f2a3b] shadow-sm border border-[#d7d1c5]' : 'bg-transparent text-[#6b6677] border border-transparent hover:bg-white/70 hover:border-[#d7d1c5]'}`}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex-1 overflow-hidden bg-[#f3efe7] p-3">
+        <div className="h-full w-full overflow-hidden rounded-[18px] border border-[#d9d3c6] bg-white">
+          <div
+            className="h-full w-full origin-top-left"
+            style={{
+              transform: `scale(${iframeScale})`,
+            }}
+          >
+            <iframe
+              src={activeTab.url}
+              title={`Safari ${activeTab.label}`}
+              className="border-0 bg-white"
+              style={{ width: iframeWidth, height: iframeHeight }}
+              loading="lazy"
+              referrerPolicy="strict-origin-when-cross-origin"
+            />
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 function ContactWindow({ onClose }: { onClose: () => void }) {
   const contactItems = [
     { icon: 'fa-regular fa-envelope', label: '邮箱', value: '13104899857@163.com', href: 'mailto:13104899857@163.com', hoverTitle: '点击即可发送邮件', hoverSubtitle: '将打开默认邮箱应用' },
@@ -551,6 +639,19 @@ function Dock({ show, revealProgress, hoveredIcon, onHoverChange, onIconClick }:
                   onMouseLeave={() => onHoverChange(null)}
                   onClick={() => onIconClick(iconName)}
                 >
+                  {iconName === '1-1' && hoveredIcon === '1-1' && (
+                    <motion.div
+                      className="pointer-events-none absolute -top-16 left-1/2 flex -translate-x-1/2 flex-col items-center"
+                      initial={{ opacity: 0.92, y: 0, scale: 1 }}
+                      animate={hoveredIcon === '1-1' ? { opacity: [0.92, 1, 0.92], y: [0, -4, 0], scale: [1, 1.06, 1] } : { opacity: 0, y: 0, scale: 0.98 }}
+                      transition={{ duration: 1.9, ease: 'easeInOut', repeat: Infinity }}
+                    >
+                      <div className="whitespace-nowrap rounded-[18px] border border-white/80 bg-white px-4 py-2 text-[14px] font-bold tracking-[0.01em] text-[#121212] shadow-[0_14px_30px_rgba(0,0,0,0.22)]">
+                        点击查看我的一些小项目
+                      </div>
+                      <div className="-mt-1.5 h-3.5 w-3.5 rotate-45 rounded-[3px] border-r border-b border-black/5 bg-white shadow-[4px_4px_10px_rgba(0,0,0,0.06)]"></div>
+                    </motion.div>
+                  )}
                   {iconName === '1-2' && hoveredIcon === '1-2' && (
                     <motion.div
                       className="pointer-events-none absolute -top-16 left-1/2 flex -translate-x-1/2 flex-col items-center"
