@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import InkTrail from './InkTrail';
 
 type LockScreenProps = {
@@ -10,6 +10,100 @@ type LockScreenProps = {
 };
 
 export default function LockScreen({ unlockProgress, isUnlocking, isUnlocked, imageRef, progress }: LockScreenProps) {
+  const heroRef = useRef<HTMLDivElement>(null);
+  const idleResetTimeoutRef = useRef<number | null>(null);
+  const [pointer, setPointer] = useState({ x: 0, y: 0, active: false });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const clearIdleReset = () => {
+      if (idleResetTimeoutRef.current !== null) {
+        window.clearTimeout(idleResetTimeoutRef.current);
+        idleResetTimeoutRef.current = null;
+      }
+    };
+
+    const resetPointer = () => {
+      clearIdleReset();
+      setPointer((current) => ({ ...current, active: false }));
+    };
+
+    const scheduleIdleReset = () => {
+      clearIdleReset();
+      idleResetTimeoutRef.current = window.setTimeout(() => {
+        setPointer((current) => ({ ...current, active: false }));
+        idleResetTimeoutRef.current = null;
+      }, 140);
+    };
+
+    const updatePointer = (clientX: number, clientY: number, active: boolean) => {
+      setPointer({ x: clientX, y: clientY, active });
+      if (active) {
+        scheduleIdleReset();
+      }
+    };
+
+    const handleMouseMove = (event: MouseEvent) => {
+      updatePointer(event.clientX, event.clientY, true);
+    };
+
+    const handleTouchMove = (event: TouchEvent) => {
+      const touch = event.touches[0];
+      if (!touch) {
+        return;
+      }
+      updatePointer(touch.clientX, touch.clientY, true);
+    };
+
+    const handleWheel = () => {
+      resetPointer();
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseleave', resetPointer);
+    window.addEventListener('wheel', handleWheel, { passive: true });
+    window.addEventListener('touchstart', handleTouchMove, { passive: true });
+    window.addEventListener('touchmove', handleTouchMove, { passive: true });
+    window.addEventListener('touchend', resetPointer);
+    window.addEventListener('touchcancel', resetPointer);
+
+    return () => {
+      clearIdleReset();
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseleave', resetPointer);
+      window.removeEventListener('wheel', handleWheel);
+      window.removeEventListener('touchstart', handleTouchMove);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', resetPointer);
+      window.removeEventListener('touchcancel', resetPointer);
+    };
+  }, []);
+
+  const heroMotion = useMemo(() => {
+    if (!pointer.active || !heroRef.current) {
+      return { rotateX: 0, rotateY: 0, rotateZ: 0, shiftX: 0, shiftY: 0 };
+    }
+
+    const bounds = heroRef.current.getBoundingClientRect();
+    const centerX = bounds.left + bounds.width / 2;
+    const centerY = bounds.top + bounds.height / 2;
+    const offsetX = pointer.x - centerX;
+    const offsetY = pointer.y - centerY;
+    const normalizedX = bounds.width > 0 ? Math.max(-1, Math.min(1, offsetX / (bounds.width / 2))) : 0;
+    const normalizedY = bounds.height > 0 ? Math.max(-1, Math.min(1, offsetY / (bounds.height / 2))) : 0;
+
+    return {
+      rotateX: normalizedY * -6,
+      rotateY: normalizedX * 8,
+      rotateZ: normalizedX * 2.8,
+      shiftX: normalizedX * 10,
+      shiftY: normalizedY * 8,
+    };
+  }, [pointer]);
+
   const textOpacity = progress >= 0.58 ? 0 : 1 - Math.min(1, progress * 1.25);
   const textTranslateY = -progress * 36;
   const textScale = 1 - progress * 0.04;
@@ -35,11 +129,14 @@ export default function LockScreen({ unlockProgress, isUnlocking, isUnlocked, im
 
         <section className="flex min-h-screen flex-col justify-center px-4 pt-20 pb-32 md:px-12 lg:px-20 z-0" style={{ visibility: hideLockCopy ? 'hidden' : 'visible' }}>
           <div
+            ref={heroRef}
             className="font-black text-[11.5vw] md:text-[10vw] lg:text-[9vw] leading-[0.9] tracking-tighter uppercase w-full transition-[opacity,transform] duration-300"
             style={{
               opacity: textOpacity,
-              transform: `translateY(${textTranslateY}px) scale(${textScale})`,
+              transform: `perspective(1400px) translate3d(${heroMotion.shiftX}px, ${textTranslateY + heroMotion.shiftY}px, 0) rotateX(${heroMotion.rotateX}deg) rotateY(${heroMotion.rotateY}deg) rotateZ(${heroMotion.rotateZ}deg) scale(${textScale})`,
               transformOrigin: 'center center',
+              transformStyle: 'preserve-3d',
+              transition: 'transform 260ms cubic-bezier(0.22, 1, 0.36, 1), opacity 300ms ease',
             }}
           >
             <div className="flex flex-col w-full">
@@ -52,12 +149,16 @@ export default function LockScreen({ unlockProgress, isUnlocking, isUnlocked, im
                 </p>
               </div>
               <h1 className="w-full text-left ml-[10vw] md:ml-[15vw]">PROGRESS</h1>
-              <div className="flex items-center gap-3 md:gap-6 lg:gap-8 w-full">
+              <div className="flex items-center gap-3 md:gap-5 lg:gap-6 w-full">
                 <h1>NOT</h1>
                 <div
                   ref={imageRef}
-                  className="relative w-[28vw] md:w-[17vw] lg:w-[13vw] h-[14vw] md:h-[9vw] lg:h-[7.5vw] shrink-0 overflow-hidden translate-y-[1.8vw] md:translate-y-[1.1vw] lg:translate-y-[0.85vw]"
-                  style={{ opacity: imageOpacity }}
+                  className="relative w-[28vw] md:w-[17vw] lg:w-[13vw] h-[14vw] md:h-[9vw] lg:h-[7.5vw] shrink-0 overflow-hidden"
+                  style={{
+                    opacity: imageOpacity,
+                    transform: 'translateY(1.8vw)',
+                    transition: 'opacity 300ms ease',
+                  }}
                 />
                 <h1>PERFECTION</h1>
               </div>

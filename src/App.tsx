@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import DesktopScene from './components/DesktopScene';
 import LockScreen from './components/LockScreen';
 
@@ -9,6 +9,15 @@ type LockImageRect = {
   height: number;
   centerX: number;
   centerY: number;
+};
+
+type LockImageMotion = {
+  translateX: number;
+  translateY: number;
+  rotateX: number;
+  rotateY: number;
+  rotateZ: number;
+  active: boolean;
 };
 
 function getUnlockTarget() {
@@ -27,7 +36,16 @@ export default function App() {
   const [unlockProgress, setUnlockProgress] = useState(0);
   const [unlockThreshold, setUnlockThreshold] = useState(() => getUnlockTarget().threshold);
   const [lockImageRect, setLockImageRect] = useState<LockImageRect | null>(null);
+  const [lockImageMotion, setLockImageMotion] = useState<LockImageMotion>({
+    translateX: 0,
+    translateY: 0,
+    rotateX: 0,
+    rotateY: 0,
+    rotateZ: 0,
+    active: false,
+  });
   const lockImageRef = useRef<HTMLDivElement>(null);
+  const idleResetTimeoutRef = useRef<number | null>(null);
 
   const targetProgress = useRef(0);
   const displayProgress = useRef(0);
@@ -50,6 +68,10 @@ export default function App() {
   const imageBlur = progress * 8;
   const offsetX = startTranslateX * (1 - progress);
   const offsetY = startTranslateY * (1 - progress);
+
+  const sharedImageTransform = useMemo(() => {
+    return `translate3d(${offsetX}px, ${offsetY}px, 0) scale(${imageScale})`;
+  }, [imageScale, offsetX, offsetY]);
 
   const tick = useCallback(() => {
     const normalizedProgress = unlockThreshold > 0 ? displayProgress.current / unlockThreshold : 0;
@@ -101,6 +123,114 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const clearIdleReset = () => {
+      if (idleResetTimeoutRef.current !== null) {
+        window.clearTimeout(idleResetTimeoutRef.current);
+        idleResetTimeoutRef.current = null;
+      }
+    };
+
+    const resetLockImageMotion = () => {
+      clearIdleReset();
+      setLockImageMotion({
+        translateX: 0,
+        translateY: 0,
+        rotateX: 0,
+        rotateY: 0,
+        rotateZ: 0,
+        active: false,
+      });
+    };
+
+    const scheduleIdleReset = () => {
+      clearIdleReset();
+      idleResetTimeoutRef.current = window.setTimeout(() => {
+        setLockImageMotion({
+          translateX: 0,
+          translateY: 0,
+          rotateX: 0,
+          rotateY: 0,
+          rotateZ: 0,
+          active: false,
+        });
+        idleResetTimeoutRef.current = null;
+      }, 140);
+    };
+
+    const updateLockImageMotion = (clientX: number, clientY: number) => {
+      if (!lockImageRect || progress >= 0.58) {
+        resetLockImageMotion();
+        return;
+      }
+
+      const normalizedX = lockImageRect.width > 0 ? Math.max(-1, Math.min(1, (clientX - lockImageRect.centerX) / (lockImageRect.width * 2.8))) : 0;
+      const normalizedY = lockImageRect.height > 0 ? Math.max(-1, Math.min(1, (clientY - lockImageRect.centerY) / (lockImageRect.height * 3.1))) : 0;
+
+      setLockImageMotion({
+        translateX: normalizedX * 4,
+        translateY: normalizedY * 3,
+        rotateX: normalizedY * -1.8,
+        rotateY: normalizedX * 2.2,
+        rotateZ: normalizedX * 0.3,
+        active: true,
+      });
+      scheduleIdleReset();
+    };
+
+    const handleMouseMove = (event: MouseEvent) => {
+      updateLockImageMotion(event.clientX, event.clientY);
+    };
+
+    const handleTouchMove = (event: TouchEvent) => {
+      const touch = event.touches[0];
+      if (!touch) {
+        return;
+      }
+      updateLockImageMotion(touch.clientX, touch.clientY);
+    };
+
+    const handleWheelMotionReset = () => {
+      resetLockImageMotion();
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseleave', resetLockImageMotion);
+    window.addEventListener('wheel', handleWheelMotionReset, { passive: true });
+    window.addEventListener('touchstart', handleTouchMove, { passive: true });
+    window.addEventListener('touchmove', handleTouchMove, { passive: true });
+    window.addEventListener('touchend', resetLockImageMotion);
+    window.addEventListener('touchcancel', resetLockImageMotion);
+
+    return () => {
+      clearIdleReset();
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseleave', resetLockImageMotion);
+      window.removeEventListener('wheel', handleWheelMotionReset);
+      window.removeEventListener('touchstart', handleTouchMove);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', resetLockImageMotion);
+      window.removeEventListener('touchcancel', resetLockImageMotion);
+    };
+  }, [lockImageRect, progress]);
+
+  useEffect(() => {
+    if (progress >= 0.58 && lockImageMotion.active) {
+      setLockImageMotion({
+        translateX: 0,
+        translateY: 0,
+        rotateX: 0,
+        rotateY: 0,
+        rotateZ: 0,
+        active: false,
+      });
+    }
+  }, [lockImageMotion.active, progress]);
+
+  useEffect(() => {
     const triggerAt = unlockThreshold * 0.2;
     const onWheel = (event: WheelEvent) => {
       if (event.deltaY === 0) return;
@@ -141,12 +271,13 @@ export default function App() {
           <div
             className="absolute inset-0 overflow-hidden will-change-transform"
             style={{
-              transform: `translate(${offsetX}px, ${offsetY}px) scale(${imageScale})`,
+              transform: `perspective(1600px) ${sharedImageTransform}`,
               transformOrigin: 'center center',
+              transition: 'transform 260ms cubic-bezier(0.22, 1, 0.36, 1)',
             }}
           >
             <img
-              src="/img/gen_20260413_0013.jpg"
+              src="/img/lockscreen.jpg"
               alt="Desktop background"
               className="h-full w-full object-cover"
               style={{ filter: `blur(${imageBlur}px)` }}
