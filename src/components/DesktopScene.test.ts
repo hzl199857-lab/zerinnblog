@@ -18,8 +18,9 @@ test('safari dock icon opens browser window with target site', () => {
   assert.match(file, /if \(iconName === '1-1'\)/);
   assert.match(file, /setIsSafariWindowOpen\(true\)/);
   assert.match(file, /<SafariWindow onClose=\{\(\) => setIsSafariWindowOpen\(false\)\} \/>/);
-  assert.match(file, /src="https:\/\/kv\.zerinnai\.online\/"/);
-  assert.match(file, /title="Safari"/);
+  assert.match(file, /url: 'https:\/\/kv\.zerinnai\.online\/'/);
+  assert.match(file, /src=\{activeTab\.url\}/);
+  assert.match(file, /title=\{`Safari \$\{activeTab\.label\}`\}/);
 });
 
 test('safari dock hover reuses desktop blur treatment', () => {

@@ -21,8 +21,8 @@ export default function DesktopScene({ isUnlocking, isUnlocked, revealProgress, 
         return prev.filter((w) => w.project.id !== project.id);
       }
 
-      const randomOffsetX = Math.round((Math.random() - 0.5) * 180);
-      const randomOffsetY = Math.round(-120 + Math.random() * 90);
+      const randomOffsetX = Math.round((Math.random() - 0.5) * 120);
+      const randomOffsetY = Math.round(Math.random() * 48);
 
       return [...prev, { project, offsetX: randomOffsetX, offsetY: randomOffsetY }];
     });
@@ -214,7 +214,7 @@ function Window(props: { project: Project; onClose: () => void; onFocus: () => v
       dragControls={dragControls}
       dragListener={false}
       dragMomentum={false}
-      dragConstraints={{ left: -300, right: 300, top: -200, bottom: 200 }}
+      dragConstraints={{ left: -260, right: 260, top: 0, bottom: 220 }}
       initial={{ opacity: 0, scale: 0.94 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.94 }}
@@ -224,7 +224,7 @@ function Window(props: { project: Project; onClose: () => void; onFocus: () => v
       className={`absolute max-w-[94vw] max-h-[85vh] bg-[#f5f5f5] text-black rounded-xl shadow-xl overflow-hidden flex flex-col border border-white/50 will-change-transform ${project.id === 'ai-live-drama-case' ? 'w-[1020px]' : 'w-[680px]'}`}
       style={{
         left: project.id === 'ai-live-drama-case' ? 'max(3vw, calc(50vw - 510px))' : 'max(3vw, calc(50vw - 340px))',
-        top: 'max(3vh, calc(50vh - 420px))',
+        top: 'clamp(16px, calc(50dvh - 360px), 72px)',
         x: offsetX,
         y: offsetY,
         transformOrigin: 'center center',
