@@ -221,10 +221,10 @@ function Window(props: { project: Project; onClose: () => void; onFocus: () => v
       transition={{ type: 'spring', damping: 20, stiffness: 280, mass: 0.8 }}
       onPointerDownCapture={onFocus}
       data-project-window
-      className={`absolute max-w-[94vw] max-h-[85vh] bg-[#f5f5f5] text-black rounded-xl shadow-xl overflow-hidden flex flex-col border border-white/50 will-change-transform ${project.id === 'ai-live-drama-case' ? 'w-[1020px]' : 'w-[680px]'}`}
+      className={`absolute max-w-[94vw] max-h-[calc(100dvh-150px)] bg-[#f5f5f5] text-black rounded-xl shadow-xl overflow-hidden flex flex-col border border-white/50 will-change-transform ${project.id === 'ai-live-drama-case' ? 'w-[clamp(720px,calc((100dvh-96px)*1.22),1020px)]' : 'w-[clamp(520px,calc((100dvh-96px)*0.92),680px)]'}`}
       style={{
-        left: project.id === 'ai-live-drama-case' ? 'max(3vw, calc(50vw - 510px))' : 'max(3vw, calc(50vw - 340px))',
-        top: 'clamp(16px, calc(50dvh - 360px), 72px)',
+        left: project.id === 'ai-live-drama-case' ? 'max(3vw, calc(50vw - min(510px, max(360px, (100dvh - 96px) * 0.61))))' : 'max(3vw, calc(50vw - min(340px, max(260px, (100dvh - 96px) * 0.46))))',
+        top: 'clamp(18px, calc(50dvh - 340px), 72px)',
         x: offsetX,
         y: offsetY,
         transformOrigin: 'center center',
@@ -254,9 +254,9 @@ function Window(props: { project: Project; onClose: () => void; onFocus: () => v
         <div className="w-12"></div>
       </div>
 
-      <div className="flex-1 overflow-y-auto no-scrollbar bg-white/95 backdrop-blur-md flex flex-col p-6">
-        <div className="flex items-start gap-4 mb-6">
-          <div className="w-16 h-16 shrink-0 flex items-center justify-center bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
+      <div className="flex-1 overflow-y-auto no-scrollbar bg-white/95 backdrop-blur-md flex flex-col p-[clamp(16px,2.3dvh,24px)]">
+        <div className="flex items-start gap-4 mb-[clamp(16px,2.3dvh,24px)]">
+          <div className="h-[clamp(52px,6dvh,64px)] w-[clamp(52px,6dvh,64px)] shrink-0 flex items-center justify-center bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
             <img src={project.iconSrc} alt={project.title} className="max-w-full max-h-full object-contain" />
           </div>
           <div className="flex flex-col pt-1">
@@ -265,9 +265,9 @@ function Window(props: { project: Project; onClose: () => void; onFocus: () => v
           </div>
         </div>
 
-        <div className="text-[13px] text-gray-700 leading-relaxed mb-6">{project.description}</div>
+        <div className="text-[13px] text-gray-700 leading-relaxed mb-[clamp(16px,2.3dvh,24px)]">{project.description}</div>
 
-        <div className="text-[13px] bg-gray-50/50 rounded-lg p-4 border border-gray-100 mb-6">
+        <div className="text-[13px] bg-gray-50/50 rounded-lg p-[clamp(12px,1.7dvh,16px)] border border-gray-100 mb-[clamp(16px,2.3dvh,24px)]">
           <h3 className="font-bold mb-1.5 text-gray-900">详情信息:</h3>
           <p className="text-gray-600">标签: {project.details.topic}</p>
         </div>
@@ -279,7 +279,7 @@ function Window(props: { project: Project; onClose: () => void; onFocus: () => v
           transition={{ duration: 0.22, ease: 'easeOut' }}
         >
           <h3 className="font-bold text-[13px] text-gray-900 mb-4">预览内容:</h3>
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-[clamp(16px,2.3dvh,24px)]">
             {(() => {
               const previewRows = project.previews.reduce<Array<{ type: 'single' | 'group'; items: typeof project.previews }>>((rows, preview) => {
                 if (preview.rowGroup) {
