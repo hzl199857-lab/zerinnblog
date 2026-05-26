@@ -221,9 +221,9 @@ function Window(props: { project: Project; onClose: () => void; onFocus: () => v
       transition={{ type: 'spring', damping: 20, stiffness: 280, mass: 0.8 }}
       onPointerDownCapture={onFocus}
       data-project-window
-      className={`absolute max-w-[94vw] max-h-[calc(100dvh-150px)] bg-[#f5f5f5] text-black rounded-xl shadow-xl overflow-hidden flex flex-col border border-white/50 will-change-transform ${project.id === 'ai-live-drama-case' ? 'w-[clamp(720px,calc((100dvh-96px)*1.22),1020px)]' : 'w-[clamp(520px,calc((100dvh-96px)*0.92),680px)]'}`}
+      className={`absolute max-w-[94vw] max-h-[calc(100dvh-150px)] bg-[#f5f5f5] text-black rounded-xl shadow-xl overflow-hidden flex flex-col border border-white/50 will-change-transform ${project.id === 'ai-live-drama-case' ? 'w-[clamp(640px,calc((100dvh-96px)*1),860px)]' : 'w-[clamp(460px,calc((100dvh-96px)*0.78),600px)]'}`}
       style={{
-        left: project.id === 'ai-live-drama-case' ? 'max(3vw, calc(50vw - min(510px, max(360px, (100dvh - 96px) * 0.61))))' : 'max(3vw, calc(50vw - min(340px, max(260px, (100dvh - 96px) * 0.46))))',
+        left: project.id === 'ai-live-drama-case' ? 'max(3vw, calc(50vw - min(430px, max(320px, (100dvh - 96px) * 0.5))))' : 'max(3vw, calc(50vw - min(300px, max(230px, (100dvh - 96px) * 0.39))))',
         top: 'clamp(18px, calc(50dvh - 340px), 72px)',
         x: offsetX,
         y: offsetY,
