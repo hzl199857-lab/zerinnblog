@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import DesktopScene from './components/DesktopScene';
 import LockScreen from './components/LockScreen';
 
@@ -305,6 +306,7 @@ export default function App() {
           />
         </div>
       )}
+      <Analytics />
     </div>
   );
 }
