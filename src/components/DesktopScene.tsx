@@ -8,6 +8,8 @@ type ActiveWindow = {
   offsetY: number;
 };
 
+const ENABLE_SAFARI_DOCK_ENTRY = false;
+
 export default function DesktopScene({ isUnlocking, isUnlocked, revealProgress, backgroundProgress }: { isUnlocking: boolean; isUnlocked: boolean; revealProgress: number; backgroundProgress: number }) {
   const [activeWindows, setActiveWindows] = useState<ActiveWindow[]>([]);
   const [hoveredDockIcon, setHoveredDockIcon] = useState<string | null>(null);
@@ -44,7 +46,7 @@ export default function DesktopScene({ isUnlocking, isUnlocked, revealProgress, 
   const progress = Math.min(1, backgroundProgress);
   const shellOpacity = 1;
   const shellBlur = progress * 8;
-  const isDockTooltipHovered = hoveredDockIcon === '1-1' || hoveredDockIcon === '1-2';
+  const isDockTooltipHovered = hoveredDockIcon === '1-2';
 
   return (
     <div className="relative w-screen h-screen overflow-hidden text-white font-sans selection:bg-white/30">
@@ -115,6 +117,7 @@ export default function DesktopScene({ isUnlocking, isUnlocked, revealProgress, 
         onHoverChange={setHoveredDockIcon}
         onIconClick={(iconName) => {
           if (iconName === '1-1') {
+            if (!ENABLE_SAFARI_DOCK_ENTRY) return;
             setIsSafariWindowOpen(true);
           }
 
@@ -639,7 +642,7 @@ function Dock({ show, revealProgress, hoveredIcon, onHoverChange, onIconClick }:
                   onMouseLeave={() => onHoverChange(null)}
                   onClick={() => onIconClick(iconName)}
                 >
-                  {iconName === '1-1' && hoveredIcon === '1-1' && (
+                  {ENABLE_SAFARI_DOCK_ENTRY && iconName === '1-1' && hoveredIcon === '1-1' && (
                     <motion.div
                       className="pointer-events-none absolute -top-16 left-1/2 flex -translate-x-1/2 flex-col items-center"
                       initial={{ opacity: 0.92, y: 0, scale: 1 }}
