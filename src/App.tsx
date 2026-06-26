@@ -32,6 +32,30 @@ function getUnlockTarget() {
   return { targetScale, threshold };
 }
 
+function FilingFooter() {
+  return (
+    <footer className="fixed inset-x-0 bottom-2 z-[200] flex flex-wrap items-center justify-center gap-x-3 gap-y-1 px-4 text-[12px] leading-none text-white/85 drop-shadow-[0_1px_2px_rgba(0,0,0,0.72)]">
+      <a
+        href="https://beian.miit.gov.cn/"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="transition-colors hover:text-white"
+      >
+        粤ICP备2025386358号
+      </a>
+      <a
+        href="https://beian.mps.gov.cn/#/query/webSearch?code=44133002100354"
+        target="_blank"
+        rel="noreferrer"
+        className="inline-flex items-center gap-1 transition-colors hover:text-white"
+      >
+        <img src="/beian.png" alt="" className="h-3.5 w-3.5" />
+        粤公网安备44133002100354号
+      </a>
+    </footer>
+  );
+}
+
 export default function App() {
   const [unlockProgress, setUnlockProgress] = useState(0);
   const [unlockThreshold, setUnlockThreshold] = useState(() => getUnlockTarget().threshold);
@@ -305,6 +329,8 @@ export default function App() {
           />
         </div>
       )}
+
+      <FilingFooter />
     </div>
   );
 }
