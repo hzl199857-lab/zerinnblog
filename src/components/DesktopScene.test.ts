@@ -41,3 +41,37 @@ test('contact dock bubble includes looping attention animation', () => {
   assert.match(file, /animate=\{hoveredIcon === '1-2' \? \{[^}]*scale:/s);
   assert.match(file, /transition=\{\{[^}]*repeat: Infinity/s);
 });
+
+test('dock uses a 300 ms pointer long press gesture', () => {
+  assert.match(file, /const DOCK_LONG_PRESS_MS = 300;/);
+  assert.match(file, /onPointerDown=\{\(event\) => startDockPress\(event, iconName\)\}/);
+  assert.match(file, /onPointerMove=\{moveDockPress\}/);
+  assert.match(file, /onPointerUp=\{endDockPress\}/);
+  assert.match(file, /onPointerCancel=\{cancelDockPress\}/);
+  assert.match(file, /setPointerCapture\(gesture\.pointerId\)/);
+});
+
+test('dock suppresses icon clicks after dragging', () => {
+  assert.match(file, /const suppressNextClickRef = useRef\(false\);/);
+  assert.match(file, /if \(suppressNextClickRef\.current\)/);
+  assert.match(file, /event\.preventDefault\(\);/);
+  assert.match(file, /onIconClick\(iconName\);/);
+});
+
+test('dock renders a flat order with fixed separator boundaries and layout animation', () => {
+  assert.match(file, /dockOrder\.map\(\(iconName, index\) =>/);
+  assert.match(file, /DOCK_GROUP_ENDS\.has\(index \+ 1\)/);
+  assert.match(file, /data-dock-icon=\{iconName\}/);
+  assert.match(file, /layout="position"/);
+});
+
+test('dock order is read and persisted with guarded local storage access', () => {
+  assert.match(file, /parseDockOrder\(window\.localStorage\.getItem\(DOCK_ORDER_STORAGE_KEY\)\)/);
+  assert.match(file, /window\.localStorage\.setItem\(/);
+  assert.match(file, /JSON\.stringify\(dockOrder\)/);
+  assert.match(file, /catch \{/);
+});
+
+test('dock scales to fit narrow mobile viewports', () => {
+  assert.match(file, /max-\[640px\]:scale-\[0\.64\]/);
+});

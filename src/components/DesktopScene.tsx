@@ -1,6 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence, useDragControls } from 'motion/react';
+import React, { useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
 import { projects, Project, PreviewItem } from '../data';
+import {
+  DEFAULT_DOCK_ORDER,
+  DOCK_GROUP_ENDS,
+  DOCK_ORDER_STORAGE_KEY,
+  parseDockOrder,
+} from './dockOrder';
 
 type ActiveWindow = {
   project: Project;
@@ -9,6 +15,9 @@ type ActiveWindow = {
 };
 
 const ENABLE_SAFARI_DOCK_ENTRY = false;
+const DOCK_LONG_PRESS_MS = 300;
+const DOCK_PRESS_MOVE_TOLERANCE = 8;
+const DOCK_SEPARATOR_LEFTS = [224, 349, 474];
 
 export default function DesktopScene({ isUnlocking, isUnlocked, revealProgress, backgroundProgress }: { isUnlocking: boolean; isUnlocked: boolean; revealProgress: number; backgroundProgress: number }) {
   const [activeWindows, setActiveWindows] = useState<ActiveWindow[]>([]);
@@ -614,76 +623,231 @@ function ContactWindow({ onClose }: { onClose: () => void }) {
 }
 
 function Dock({ show, revealProgress, hoveredIcon, onHoverChange, onIconClick }: { show: boolean; revealProgress: number; hoveredIcon: string | null; onHoverChange: (iconName: string | null) => void; onIconClick: (iconName: string) => void }) {
-  const iconSize = 'h-[46px] w-[46px]';
-  const dockGroups = [
-    ['1-1', '1-2', '1-3', '1-4'],
-    ['2-1', '2-2'],
-    ['3-1', '3-2'],
-    ['4-1'],
-  ];
+  const [dockOrder, setDockOrder] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return [...DEFAULT_DOCK_ORDER];
+
+    try {
+      return parseDockOrder(window.localStorage.getItem(DOCK_ORDER_STORAGE_KEY));
+    } catch {
+      return [...DEFAULT_DOCK_ORDER];
+    }
+  });
+  const [activeDragIcon, setActiveDragIcon] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        DOCK_ORDER_STORAGE_KEY,
+        JSON.stringify(dockOrder),
+      );
+    } catch {
+      // The reordered state still works for this page session.
+    }
+  }, [dockOrder]);
 
   return (
     <motion.div
-      className="absolute bottom-10 left-1/2 -translate-x-1/2 z-40"
+      className="absolute bottom-10 left-1/2 z-40 -translate-x-1/2"
       initial={{ opacity: 0, y: 52, scale: 0.94 }}
       animate={show ? { opacity: revealProgress, y: (1 - revealProgress) * 26, scale: 0.98 + revealProgress * 0.02 } : { opacity: 0, y: 30, scale: 0.95 }}
       transition={{ type: 'spring', damping: 22, stiffness: 165, mass: 1, delay: 0.24 }}
       style={{ pointerEvents: revealProgress > 0.92 ? 'auto' : 'none' }}
     >
-      <div className="flex items-end justify-center px-8 py-2.5 rounded-[22px] border border-white/45 bg-white/18 backdrop-blur-[18px] shadow-[0_14px_28px_rgba(0,0,0,0.18)]">
-        {dockGroups.map((group, groupIndex) => (
-          <React.Fragment key={groupIndex}>
-            <div className="flex items-end gap-3">
-              {group.map((iconName) => (
-                <div
-                  key={iconName}
-                  className="group relative flex h-[44px] w-[44px] cursor-pointer items-end justify-center transition-all duration-200 hover:-translate-y-2"
-                  onMouseEnter={() => onHoverChange(iconName)}
-                  onMouseLeave={() => onHoverChange(null)}
-                  onClick={() => onIconClick(iconName)}
-                >
-                  {ENABLE_SAFARI_DOCK_ENTRY && iconName === '1-1' && hoveredIcon === '1-1' && (
-                    <motion.div
-                      className="pointer-events-none absolute -top-16 left-1/2 flex -translate-x-1/2 flex-col items-center"
-                      initial={{ opacity: 0.92, y: 0, scale: 1 }}
-                      animate={hoveredIcon === '1-1' ? { opacity: [0.92, 1, 0.92], y: [0, -4, 0], scale: [1, 1.06, 1] } : { opacity: 0, y: 0, scale: 0.98 }}
-                      transition={{ duration: 1.9, ease: 'easeInOut', repeat: Infinity }}
-                    >
-                      <div className="whitespace-nowrap rounded-[18px] border border-white/80 bg-white px-4 py-2 text-[14px] font-bold tracking-[0.01em] text-[#121212] shadow-[0_14px_30px_rgba(0,0,0,0.22)]">
-                        点击查看我的一些小项目
-                      </div>
-                      <div className="-mt-1.5 h-3.5 w-3.5 rotate-45 rounded-[3px] border-r border-b border-black/5 bg-white shadow-[4px_4px_10px_rgba(0,0,0,0.06)]"></div>
-                    </motion.div>
-                  )}
-                  {iconName === '1-2' && hoveredIcon === '1-2' && (
-                    <motion.div
-                      className="pointer-events-none absolute -top-16 left-1/2 flex -translate-x-1/2 flex-col items-center"
-                      initial={{ opacity: 0.92, y: 0, scale: 1 }}
-                      animate={hoveredIcon === '1-2' ? { opacity: [0.92, 1, 0.92], y: [0, -4, 0], scale: [1, 1.06, 1] } : { opacity: 0, y: 0, scale: 0.98 }}
-                      transition={{ duration: 1.9, ease: 'easeInOut', repeat: Infinity }}
-                    >
-                      <div className="whitespace-nowrap rounded-[18px] border border-white/80 bg-white px-4 py-2 text-[14px] font-bold tracking-[0.01em] text-[#121212] shadow-[0_14px_30px_rgba(0,0,0,0.22)]">
-                        联系我~
-                      </div>
-                      <div className="-mt-1.5 h-3.5 w-3.5 rotate-45 rounded-[3px] border-r border-b border-black/5 bg-white shadow-[4px_4px_10px_rgba(0,0,0,0.06)]"></div>
-                    </motion.div>
-                  )}
-                  <img
-                    src={`/dock-icons/${iconName}.png`}
-                    alt={iconName}
-                    className={`${iconSize} rounded-[10px] object-contain drop-shadow-[0_6px_9px_rgba(0,0,0,0.15)] transition-all duration-200 group-hover:h-[52px] group-hover:w-[52px]`}
-                    draggable={false}
-                  />
-                  <div className="absolute -bottom-1.5 h-[4px] w-[4px] rounded-full bg-black/55 opacity-0 transition-opacity duration-200 group-hover:opacity-100"></div>
-                </div>
-              ))}
-            </div>
-            {groupIndex < dockGroups.length - 1 && (
-              <div className="mx-3 mb-1 h-[34px] w-px shrink-0 rounded-full bg-black/12 shadow-[1px_0_0_rgba(255,255,255,0.25)]"></div>
-            )}
-          </React.Fragment>
-        ))}
+      <div className="origin-center rounded-[22px] border border-white/45 bg-white/18 px-8 py-2.5 shadow-[0_14px_28px_rgba(0,0,0,0.18)] backdrop-blur-[18px] max-[640px]:scale-[0.64]">
+        <Reorder.Group
+          as="div"
+          axis="x"
+          values={dockOrder}
+          onReorder={setDockOrder}
+          className="relative flex items-end gap-3"
+        >
+          {dockOrder.map((iconName, index) => (
+            <DockIcon
+              key={iconName}
+              iconName={iconName}
+              hoveredIcon={hoveredIcon}
+              isDockDragging={activeDragIcon !== null}
+              hasGroupGap={DOCK_GROUP_ENDS.has(index + 1)}
+              onHoverChange={onHoverChange}
+              onIconClick={onIconClick}
+              onDragStateChange={(isDragging) => {
+                setActiveDragIcon(isDragging ? iconName : null);
+                if (isDragging) onHoverChange(null);
+              }}
+            />
+          ))}
+          {DOCK_SEPARATOR_LEFTS.map((left) => (
+            <div
+              key={left}
+              className="pointer-events-none absolute bottom-1 h-[34px] w-px rounded-full bg-black/12 shadow-[1px_0_0_rgba(255,255,255,0.25)]"
+              style={{ left }}
+            />
+          ))}
+        </Reorder.Group>
       </div>
     </motion.div>
+  );
+}
+
+type DockPressGesture = {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  activated: boolean;
+  cancelled: boolean;
+  timerId: number;
+  element: HTMLElement;
+};
+
+function DockIcon({ iconName, hoveredIcon, isDockDragging, hasGroupGap, onHoverChange, onIconClick, onDragStateChange }: {
+  key?: React.Key;
+  iconName: string;
+  hoveredIcon: string | null;
+  isDockDragging: boolean;
+  hasGroupGap: boolean;
+  onHoverChange: (iconName: string | null) => void;
+  onIconClick: (iconName: string) => void;
+  onDragStateChange: (isDragging: boolean) => void;
+}) {
+  const dragControls = useDragControls();
+  const gestureRef = useRef<DockPressGesture | null>(null);
+  const suppressNextClickRef = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      if (gestureRef.current) window.clearTimeout(gestureRef.current.timerId);
+    };
+  }, []);
+
+  const releaseGesture = (suppressClick: boolean) => {
+    const gesture = gestureRef.current;
+    if (!gesture) return;
+
+    window.clearTimeout(gesture.timerId);
+    if (gesture.activated) onDragStateChange(false);
+    if (suppressClick || gesture.activated || gesture.cancelled) {
+      suppressNextClickRef.current = true;
+      window.setTimeout(() => {
+        suppressNextClickRef.current = false;
+      }, 0);
+    }
+    gestureRef.current = null;
+  };
+
+  const startDockPress = (event: React.PointerEvent<HTMLElement>, pressedIcon: string) => {
+    if (!event.isPrimary || (event.pointerType === 'mouse' && event.button !== 0)) return;
+
+    const element = event.currentTarget;
+    const gesture: DockPressGesture = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      activated: false,
+      cancelled: false,
+      timerId: 0,
+      element,
+    };
+
+    gestureRef.current = gesture;
+    try {
+      gesture.element.setPointerCapture(gesture.pointerId);
+    } catch {
+      // Pointer capture is an enhancement; Motion's window listeners still work.
+    }
+
+    gesture.timerId = window.setTimeout(() => {
+      if (gestureRef.current !== gesture || gesture.cancelled) return;
+      gesture.activated = true;
+      suppressNextClickRef.current = true;
+      onDragStateChange(true);
+      dragControls.start(event);
+    }, DOCK_LONG_PRESS_MS);
+
+    if (pressedIcon !== iconName) releaseGesture(true);
+  };
+
+  const moveDockPress = (event: React.PointerEvent<HTMLElement>) => {
+    const gesture = gestureRef.current;
+    if (!gesture || gesture.pointerId !== event.pointerId || gesture.activated) return;
+
+    const distance = Math.hypot(
+      event.clientX - gesture.startX,
+      event.clientY - gesture.startY,
+    );
+    if (distance <= DOCK_PRESS_MOVE_TOLERANCE) return;
+
+    gesture.cancelled = true;
+    window.clearTimeout(gesture.timerId);
+  };
+
+  const endDockPress = () => releaseGesture(false);
+  const cancelDockPress = () => releaseGesture(true);
+
+  return (
+    <Reorder.Item
+      value={iconName}
+      dragListener={false}
+      dragControls={dragControls}
+      layout="position"
+      data-dock-icon={iconName}
+      className={`group relative flex h-[44px] w-[44px] shrink-0 cursor-pointer items-end justify-center ${hasGroupGap ? 'mr-[13px]' : ''}`}
+      style={{ touchAction: 'none' }}
+      whileHover={isDockDragging ? undefined : { y: -8 }}
+      whileDrag={{ y: -8, scale: 1.12, zIndex: 60 }}
+      transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+      onPointerDown={(event) => startDockPress(event, iconName)}
+      onPointerMove={moveDockPress}
+      onPointerUp={endDockPress}
+      onPointerCancel={cancelDockPress}
+      onDragEnd={() => releaseGesture(true)}
+      onMouseEnter={() => {
+        if (!isDockDragging) onHoverChange(iconName);
+      }}
+      onMouseLeave={() => onHoverChange(null)}
+      onContextMenu={(event) => event.preventDefault()}
+      onClick={(event) => {
+        if (suppressNextClickRef.current) {
+          event.preventDefault();
+          event.stopPropagation();
+          suppressNextClickRef.current = false;
+          return;
+        }
+        onIconClick(iconName);
+      }}
+    >
+      {!isDockDragging && ENABLE_SAFARI_DOCK_ENTRY && iconName === '1-1' && hoveredIcon === '1-1' && (
+        <motion.div
+          className="pointer-events-none absolute -top-16 left-1/2 flex -translate-x-1/2 flex-col items-center"
+          initial={{ opacity: 0.92, y: 0, scale: 1 }}
+          animate={hoveredIcon === '1-1' ? { opacity: [0.92, 1, 0.92], y: [0, -4, 0], scale: [1, 1.06, 1] } : { opacity: 0, y: 0, scale: 0.98 }}
+          transition={{ duration: 1.9, ease: 'easeInOut', repeat: Infinity }}
+        >
+          <div className="whitespace-nowrap rounded-[18px] border border-white/80 bg-white px-4 py-2 text-[14px] font-bold tracking-[0.01em] text-[#121212] shadow-[0_14px_30px_rgba(0,0,0,0.22)]">
+            点击查看我的一些小项目
+          </div>
+          <div className="-mt-1.5 h-3.5 w-3.5 rotate-45 rounded-[3px] border-r border-b border-black/5 bg-white shadow-[4px_4px_10px_rgba(0,0,0,0.06)]" />
+        </motion.div>
+      )}
+      {!isDockDragging && iconName === '1-2' && hoveredIcon === '1-2' && (
+        <motion.div
+          className="pointer-events-none absolute -top-16 left-1/2 flex -translate-x-1/2 flex-col items-center"
+          initial={{ opacity: 0.92, y: 0, scale: 1 }}
+          animate={hoveredIcon === '1-2' ? { opacity: [0.92, 1, 0.92], y: [0, -4, 0], scale: [1, 1.06, 1] } : { opacity: 0, y: 0, scale: 0.98 }}
+          transition={{ duration: 1.9, ease: 'easeInOut', repeat: Infinity }}
+        >
+          <div className="whitespace-nowrap rounded-[18px] border border-white/80 bg-white px-4 py-2 text-[14px] font-bold tracking-[0.01em] text-[#121212] shadow-[0_14px_30px_rgba(0,0,0,0.22)]">
+            联系我~
+          </div>
+          <div className="-mt-1.5 h-3.5 w-3.5 rotate-45 rounded-[3px] border-r border-b border-black/5 bg-white shadow-[4px_4px_10px_rgba(0,0,0,0.06)]" />
+        </motion.div>
+      )}
+      <img
+        src={`/dock-icons/${iconName}.png`}
+        alt={iconName}
+        className={`h-[46px] w-[46px] rounded-[10px] object-contain drop-shadow-[0_6px_9px_rgba(0,0,0,0.15)] transition-[width,height] duration-200 ${isDockDragging ? '' : 'group-hover:h-[52px] group-hover:w-[52px]'}`}
+        draggable={false}
+      />
+      <div className={`absolute -bottom-1.5 h-[4px] w-[4px] rounded-full bg-black/55 transition-opacity duration-200 ${isDockDragging ? 'opacity-0' : 'opacity-0 group-hover:opacity-100'}`} />
+    </Reorder.Item>
   );
 }
