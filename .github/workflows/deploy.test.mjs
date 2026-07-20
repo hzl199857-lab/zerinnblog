@@ -16,6 +16,8 @@ test('deploys pushes to main and supports manual runs', () => {
 });
 
 test('builds and validates the Vite application', () => {
+  assert.match(source, /actions\/checkout@v7/);
+  assert.match(source, /actions\/setup-node@v7/);
   assert.match(source, /npm ci/);
   assert.match(source, /npm run lint/);
   assert.match(source, /npm run build/);
