@@ -89,7 +89,7 @@ Expected: all helper tests pass.
 
 - [ ] **Step 1: Add failing interaction contract tests**
 
-Assert that the Dock includes `DOCK_LONG_PRESS_MS = 300`, pointer down/move/up/cancel handlers, `setPointerCapture`, click suppression after dragging, fixed `DOCK_GROUP_ENDS`, guarded `localStorage` reads/writes, and Motion `layout` rendering.
+Assert that the Dock includes `DOCK_LONG_PRESS_MS = 150`, pointer down/move/up/cancel handlers, `setPointerCapture`, click suppression after dragging, fixed `DOCK_GROUP_ENDS`, guarded `localStorage` reads/writes, and Motion `layout` rendering.
 
 - [ ] **Step 2: Run the component tests and verify RED**
 
@@ -112,9 +112,9 @@ useEffect(() => {
 }, [dockOrder]);
 ```
 
-- [ ] **Step 4: Implement the 300 ms pointer gesture**
+- [ ] **Step 4: Implement the 150 ms pointer gesture**
 
-Track the pressed pointer and start coordinates in refs, activate after 300 ms, cancel pre-activation movement beyond 8 px, capture the pointer on activation, and locate the target icon with `[data-dock-icon]` rectangles during active movement. Move via functional state updates and suppress the following click when a drag ends.
+Track the pressed pointer and start coordinates in refs, activate after 150 ms, cancel pre-activation movement beyond 8 px, capture the pointer on activation, and locate the target icon with `[data-dock-icon]` rectangles during active movement. Move via functional state updates and suppress the following click when a drag ends.
 
 - [ ] **Step 5: Render one flat animated sequence with fixed separators**
 
@@ -145,7 +145,7 @@ Expected: exit 0 and Vite emits `dist` assets.
 
 - [ ] **Step 3: Verify in a browser**
 
-At desktop and mobile viewport sizes, verify short click behavior, 300 ms drag activation, cross-separator movement, no click after drag, and persistence after reload. Inspect the console for runtime errors.
+At desktop and mobile viewport sizes, verify short click behavior, 150 ms drag activation, cross-separator movement, no click after drag, and persistence after reload. Inspect the console for runtime errors.
 
 - [ ] **Step 4: Review the final diff**
 

@@ -15,7 +15,7 @@ type ActiveWindow = {
 };
 
 const ENABLE_SAFARI_DOCK_ENTRY = false;
-const DOCK_LONG_PRESS_MS = 300;
+const DOCK_LONG_PRESS_MS = 150;
 const DOCK_PRESS_MOVE_TOLERANCE = 8;
 const DOCK_SEPARATOR_LEFTS = [224, 349, 474];
 

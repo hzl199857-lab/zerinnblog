@@ -14,7 +14,7 @@ Allow each visitor to long-press a Dock icon, drag it across the full Dock, and 
 
 ## Interaction
 
-1. Pressing an icon starts a 300 ms hold timer.
+1. Pressing an icon starts a 150 ms hold timer.
 2. Releasing before the timer finishes keeps the existing click behavior.
 3. Moving beyond a small tolerance before activation cancels the hold, so normal pointer movement does not unexpectedly start a drag.
 4. Once activated, the icon lifts and scales slightly, captures the pointer, and follows horizontal pointer movement.
@@ -55,14 +55,14 @@ This makes deployments resilient when Dock icons are added or removed later. Sto
 ## Testing
 
 - Unit-test order normalization, invalid persisted data, missing/new icons, duplicates, and moves in both directions.
-- Component/source-contract tests verify the 300 ms activation, Pointer Events, drag click suppression, fixed separator boundaries, and persistence wiring.
+- Component/source-contract tests verify the 150 ms activation, Pointer Events, drag click suppression, fixed separator boundaries, and persistence wiring.
 - Run TypeScript checks and a production build.
 - Manually verify in the running site at desktop and mobile viewport sizes: short click, long-press activation, cross-separator reorder, release, and refresh restoration.
 
 ## Acceptance Criteria
 
 - A short click retains the icon's existing action.
-- Holding an icon for 300 ms activates a visible drag state.
+- Holding an icon for 150 ms activates a visible drag state.
 - Dragging across any other icon reorders the Dock smoothly, including across separators.
 - Separators remain after positions 4, 6, and 8.
 - Dragging never triggers the icon's click action.

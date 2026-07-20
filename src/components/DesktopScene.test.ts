@@ -42,8 +42,8 @@ test('contact dock bubble includes looping attention animation', () => {
   assert.match(file, /transition=\{\{[^}]*repeat: Infinity/s);
 });
 
-test('dock uses a 300 ms pointer long press gesture', () => {
-  assert.match(file, /const DOCK_LONG_PRESS_MS = 300;/);
+test('dock uses a 150 ms pointer long press gesture', () => {
+  assert.match(file, /const DOCK_LONG_PRESS_MS = 150;/);
   assert.match(file, /onPointerDown=\{\(event\) => startDockPress\(event, iconName\)\}/);
   assert.match(file, /onPointerMove=\{moveDockPress\}/);
   assert.match(file, /onPointerUp=\{endDockPress\}/);
