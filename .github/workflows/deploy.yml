@@ -1,0 +1,160 @@
+name: Deploy to Aliyun
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zerinnblog-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy portfolio
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check types
+        run: npm run lint
+
+      - name: Build production site
+        run: npm run build
+
+      - name: Deploy release over SSH
+        env:
+          SERVER_HOST: ${{ secrets.ALIYUN_SERVER_HOST }}
+          SERVER_PORT: ${{ secrets.ALIYUN_SERVER_PORT }}
+          SERVER_USER: ${{ secrets.ALIYUN_SERVER_USER }}
+          SERVER_SSH_KEY: ${{ secrets.ALIYUN_SERVER_SSH_KEY }}
+          RELEASE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          for variable in SERVER_HOST SERVER_PORT SERVER_USER SERVER_SSH_KEY; do
+            if [ -z "${!variable:-}" ]; then
+              echo "Missing required secret: $variable"
+              exit 1
+            fi
+          done
+
+          printf '%s\n' "$RELEASE_SHA" > dist/deploy-version.txt
+          LOCAL_ARCHIVE="$RUNNER_TEMP/zerinnblog-${RELEASE_SHA}.tar.gz"
+          REMOTE_ARCHIVE="/tmp/zerinnblog-${RELEASE_SHA}.tar.gz"
+          tar -C dist -czf "$LOCAL_ARCHIVE" .
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SERVER_SSH_KEY" > ~/.ssh/aliyun_deploy_key
+          chmod 600 ~/.ssh/aliyun_deploy_key
+          ssh-keyscan -p "$SERVER_PORT" -H "$SERVER_HOST" >> ~/.ssh/known_hosts
+
+          scp \
+            -i ~/.ssh/aliyun_deploy_key \
+            -P "$SERVER_PORT" \
+            "$LOCAL_ARCHIVE" \
+            "$SERVER_USER@$SERVER_HOST:$REMOTE_ARCHIVE"
+
+          ssh \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=10 \
+            -i ~/.ssh/aliyun_deploy_key \
+            -p "$SERVER_PORT" \
+            "$SERVER_USER@$SERVER_HOST" \
+            "RELEASE_SHA='$RELEASE_SHA' ARCHIVE='$REMOTE_ARCHIVE' bash -se" <<'REMOTE'
+          set -euo pipefail
+
+          APP_ROOT="/www/zerinnblog"
+          RELEASES="$APP_ROOT/releases"
+          DIST_LINK="$APP_ROOT/dist"
+          NEXT_LINK="$APP_ROOT/.dist-next"
+          RELEASE_DIR="$RELEASES/$RELEASE_SHA"
+          KEEP_RELEASES=5
+
+          cleanup() {
+            rm -f -- "$ARCHIVE" "$NEXT_LINK"
+          }
+          trap cleanup EXIT
+
+          if [[ ! "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Invalid release SHA: $RELEASE_SHA"
+            exit 1
+          fi
+
+          mkdir -p "$RELEASES"
+          rm -rf -- "$RELEASE_DIR"
+          mkdir -p "$RELEASE_DIR"
+          tar -xzf "$ARCHIVE" -C "$RELEASE_DIR"
+
+          test -s "$RELEASE_DIR/index.html"
+          test "$(cat "$RELEASE_DIR/deploy-version.txt")" = "$RELEASE_SHA"
+
+          PREVIOUS_RELEASE=""
+          if [ -L "$DIST_LINK" ]; then
+            PREVIOUS_RELEASE="$(readlink -f "$DIST_LINK" || true)"
+          elif [ -d "$DIST_LINK" ]; then
+            PREVIOUS_RELEASE="$RELEASES/legacy-$(date +%Y%m%d%H%M%S)"
+            mv -- "$DIST_LINK" "$PREVIOUS_RELEASE"
+          elif [ -e "$DIST_LINK" ]; then
+            echo "$DIST_LINK exists but is neither a directory nor a symbolic link."
+            exit 1
+          fi
+
+          ln -sfn "$RELEASE_DIR" "$NEXT_LINK"
+          mv -Tf "$NEXT_LINK" "$DIST_LINK"
+
+          HEALTHY=false
+          for attempt in 1 2 3 4 5 6; do
+            DEPLOYED_VERSION="$(curl -fsS https://www.zerinnai.online/deploy-version.txt || true)"
+            if [ "$DEPLOYED_VERSION" = "$RELEASE_SHA" ]; then
+              HEALTHY=true
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$HEALTHY" != true ]; then
+            echo "Public health check failed; restoring the previous release."
+            if [ -n "$PREVIOUS_RELEASE" ] && [ -d "$PREVIOUS_RELEASE" ]; then
+              ln -sfn "$PREVIOUS_RELEASE" "$NEXT_LINK"
+              mv -Tf "$NEXT_LINK" "$DIST_LINK"
+            else
+              rm -f -- "$DIST_LINK"
+            fi
+            rm -rf -- "$RELEASE_DIR"
+            exit 1
+          fi
+
+          CURRENT_RELEASE="$(readlink -f "$DIST_LINK")"
+          mapfile -t ALL_RELEASES < <(
+            find "$RELEASES" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' \
+              | sort -rn \
+              | cut -d' ' -f2-
+          )
+
+          for ((index = KEEP_RELEASES; index < ${#ALL_RELEASES[@]}; index++)); do
+            OLD_RELEASE="${ALL_RELEASES[$index]}"
+            if [ "$OLD_RELEASE" != "$CURRENT_RELEASE" ]; then
+              rm -rf -- "$OLD_RELEASE"
+            fi
+          done
+
+          echo "Deployed $RELEASE_SHA to $DIST_LINK."
+          REMOTE
