@@ -7,6 +7,25 @@ export interface PreviewItem {
   rowGroup?: string;
 }
 
+export interface ProjectCaseStudy {
+  kicker: string;
+  headline: string;
+  status: string;
+  storeUrl: string;
+  metrics: Array<{ value: string; label: string }>;
+  problem: {
+    title: string;
+    body: string;
+  };
+  solution: {
+    title: string;
+    body: string;
+  };
+  workflow: Array<{ step: string; title: string; body: string }>;
+  capabilities: Array<{ title: string; body: string }>;
+  engineering: Array<{ title: string; body: string }>;
+}
+
 export interface Project {
   id: string;
   title: string;
@@ -19,6 +38,7 @@ export interface Project {
   };
   previews: PreviewItem[];
   previewIntro?: string;
+  caseStudy?: ProjectCaseStudy;
   isPortrait?: boolean; // 新增属性，用于标记是否为竖版图标
   isLandscape?: boolean; // 新增属性，用于标记是否为宽屏/横版图标
 }
@@ -219,5 +239,62 @@ export const projects: Project[] = [
       { type: 'image', src: '/img/works/AI真人服装棚拍/upscale_and_expand_the_image_2e50cdb0f30d33a628554e8807d33033.jpg' },
       { type: 'image', src: '/img/works/AI真人服装棚拍/1_1_2_fae926b997c2496b8b400ff2d3fa7e64.jpg' }
     ]
+  },
+  {
+    id: 'prompt-catcher',
+    title: '提示词抓取器',
+    iconSrc: '/img/works/prompt-catcher/icon.png',
+    x: 82,
+    y: 50,
+    description: '一款面向 AI 视觉创作者的 Chrome 浏览器插件。用户无需下载图片或切换工具，只需悬停网页图片并点击一次，即可调用自己选择的视觉模型，获得结构化 JSON、中文提示词和英文提示词。',
+    details: {
+      topic: '独立产品 > Chrome Extension > AI Vision',
+    },
+    previews: [
+      { type: 'image', src: '/img/works/prompt-catcher/chrome-store.png', title: 'Chrome 应用商店公开页面' },
+      { type: 'video', src: '/img/works/prompt-catcher/demo.mp4', title: '从灵感图到提示词的完整使用演示', aspectRatio: '16 / 9' },
+      { type: 'image', src: '/img/works/prompt-catcher/reverse-prompt.png', title: '从网页原图反推结构化提示词，并追加道具替换指令' },
+      { type: 'image', src: '/img/works/prompt-catcher/generation-result.png', title: '原始参考图与提示词驱动的实际生图结果对比' },
+      { type: 'image', src: '/img/works/prompt-catcher/settings.png', title: '模型与 API 配置界面' },
+      { type: 'image', src: '/img/works/prompt-catcher/adoption.png', title: 'Chrome Web Store 开发者后台安装数据' },
+    ],
+    caseStudy: {
+      kicker: 'PROMPT CATCHER · CHROME EXTENSION',
+      headline: '把网页上的灵感图，直接变成可继续创作的提示词',
+      status: '已上架 Chrome 应用商店',
+      storeUrl: 'https://chromewebstore.google.com/detail/gmkolildoanajhiffjehiejfmdcbgoik',
+      metrics: [
+        { value: '5.0', label: 'Chrome 商店评分' },
+        { value: '118', label: '后台累计安装' },
+        { value: '12+', label: '兼容 API 服务商' },
+        { value: 'v1.2.0', label: '当前发布版本' },
+      ],
+      problem: {
+        title: '灵感出现时，工作流不该被打断',
+        body: '过去要反推一张网页图片，通常需要保存图片、打开另一个 AI 工具、重新上传、整理输出，再切回原页面。步骤并不复杂，但频繁切换会打断浏览与素材研究，也让大量有价值的灵感来不及沉淀。',
+      },
+      solution: {
+        title: '把视觉理解能力放回浏览现场',
+        body: '提示词抓取器直接工作在当前网页中：识别可用图片，在悬停时提供入口，并把模型结果显示在图片旁边。用户可以继续浏览、编辑结果或复制提示词，不需要离开正在进行的研究过程。',
+      },
+      workflow: [
+        { step: '01', title: '发现图片', body: '自动识别网页中尺寸合适的图片，过滤视频封面等非目标内容。' },
+        { step: '02', title: '一键反推', body: '悬停图片后点击“反推提示词”，直接调用已配置的视觉模型。' },
+        { step: '03', title: '选择输出', body: '按用途查看结构化 JSON、中文 Prompt 或英文 Prompt 三种结果。' },
+        { step: '04', title: '继续创作', body: '支持补充修改意图、编辑、重新生成和一键复制，无缝进入下一步生图。' },
+      ],
+      capabilities: [
+        { title: '结构化视觉拆解', body: '不仅描述主体，还分析构图、镜头、空间、光色、材质与不可丢失的视觉锚点。' },
+        { title: '多模型自由选择', body: '兼容 OpenAI 风格接口，可获取模型列表，也允许手动填写模型和自定义 Base URL。' },
+        { title: '面向真实网页环境', body: '处理远程 URL、Base64 与非常规图片格式，并提供超时、重试和清晰的错误反馈。' },
+        { title: '结果可二次加工', body: '用户可以指定画面修改方向，在结果中直接编辑、翻译、重新生成或只复制文本。' },
+      ],
+      engineering: [
+        { title: 'Manifest V3 原生扩展', body: '由 content script、service worker 和设置页组成，覆盖从页面交互到模型请求的完整链路。' },
+        { title: 'Shadow DOM 隔离', body: '插件界面使用封闭 Shadow DOM，避免被不同网站的全局 CSS 污染，保证交互稳定。' },
+        { title: '无自建数据服务器', body: 'API 配置保存在浏览器本地，图片与请求从用户浏览器直达其选择的模型服务商。' },
+        { title: '响应式浮层定位', body: '结果面板会根据图片与视口空间自动换边、跟随滚动，并支持拖动与边界约束。' },
+      ],
+    },
   }
 ];

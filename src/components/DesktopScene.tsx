@@ -14,10 +14,11 @@ type ActiveWindow = {
   offsetY: number;
 };
 
-const ENABLE_SAFARI_DOCK_ENTRY = false;
+const ENABLE_SAFARI_DOCK_ENTRY = true;
 const DOCK_LONG_PRESS_MS = 150;
 const DOCK_PRESS_MOVE_TOLERANCE = 8;
 const DOCK_SEPARATOR_LEFTS = [224, 349, 474];
+const promptCatcherProject = projects.find((project) => project.id === 'prompt-catcher');
 
 export default function DesktopScene({ isUnlocking, isUnlocked, revealProgress, backgroundProgress }: { isUnlocking: boolean; isUnlocked: boolean; revealProgress: number; backgroundProgress: number }) {
   const [activeWindows, setActiveWindows] = useState<ActiveWindow[]>([]);
@@ -32,8 +33,8 @@ export default function DesktopScene({ isUnlocking, isUnlocked, revealProgress, 
         return prev.filter((w) => w.project.id !== project.id);
       }
 
-      const randomOffsetX = Math.round((Math.random() - 0.5) * 120);
-      const randomOffsetY = Math.round(Math.random() * 48);
+      const randomOffsetX = project.caseStudy ? 0 : Math.round((Math.random() - 0.5) * 120);
+      const randomOffsetY = project.caseStudy ? 0 : Math.round(Math.random() * 48);
 
       return [...prev, { project, offsetX: randomOffsetX, offsetY: randomOffsetY }];
     });
@@ -55,7 +56,7 @@ export default function DesktopScene({ isUnlocking, isUnlocked, revealProgress, 
   const progress = Math.min(1, backgroundProgress);
   const shellOpacity = 1;
   const shellBlur = progress * 8;
-  const isDockTooltipHovered = hoveredDockIcon === '1-2';
+  const isDockTooltipHovered = hoveredDockIcon === '1-1' || hoveredDockIcon === '1-2';
 
   return (
     <div className="relative w-screen h-screen overflow-hidden text-white font-sans selection:bg-white/30">
@@ -71,14 +72,14 @@ export default function DesktopScene({ isUnlocking, isUnlocked, revealProgress, 
       </div>
 
       <div
-        className="relative z-10 h-full w-full transition-all duration-200"
+        className="relative h-full w-full transition-all duration-200"
         style={{
           filter: isDockTooltipHovered ? 'blur(12px)' : undefined,
           backdropFilter: isDockTooltipHovered ? 'saturate(0.9)' : undefined,
         }}
       >
         <div className="relative z-10 w-full h-full p-8">
-          {projects.map((project, index) => (
+          {projects.filter((project) => !project.caseStudy).map((project, index) => (
             <DesktopIcon
               key={project.id}
               project={project}
@@ -106,7 +107,9 @@ export default function DesktopScene({ isUnlocking, isUnlocked, revealProgress, 
       </div>
 
       <AnimatePresence>
-        {isSafariWindowOpen && <SafariWindow onClose={() => setIsSafariWindowOpen(false)} />}
+        {isSafariWindowOpen && promptCatcherProject && (
+          <SafariWindow project={promptCatcherProject} onClose={() => setIsSafariWindowOpen(false)} />
+        )}
       </AnimatePresence>
 
       <AnimatePresence>
@@ -126,7 +129,6 @@ export default function DesktopScene({ isUnlocking, isUnlocked, revealProgress, 
         onHoverChange={setHoveredDockIcon}
         onIconClick={(iconName) => {
           if (iconName === '1-1') {
-            if (!ENABLE_SAFARI_DOCK_ENTRY) return;
             setIsSafariWindowOpen(true);
           }
 
@@ -218,6 +220,7 @@ function Window(props: { project: Project; onClose: () => void; onFocus: () => v
       openLightbox(preview);
     },
   });
+  const isWideProject = project.id === 'ai-live-drama-case' || Boolean(project.caseStudy);
 
   return (
     <>
@@ -233,9 +236,13 @@ function Window(props: { project: Project; onClose: () => void; onFocus: () => v
       transition={{ type: 'spring', damping: 20, stiffness: 280, mass: 0.8 }}
       onPointerDownCapture={onFocus}
       data-project-window
-      className={`absolute max-w-[94vw] max-h-[calc(100dvh-150px)] bg-[#f5f5f5] text-black rounded-xl shadow-xl overflow-hidden flex flex-col border border-white/50 will-change-transform ${project.id === 'ai-live-drama-case' ? 'w-[clamp(640px,calc((100dvh-96px)*1),860px)]' : 'w-[clamp(460px,calc((100dvh-96px)*0.78),600px)]'}`}
+      className={`absolute max-w-[94vw] max-h-[calc(100dvh-150px)] bg-[#f5f5f5] text-black rounded-xl shadow-xl overflow-hidden flex flex-col border border-white/50 will-change-transform ${project.caseStudy ? 'w-[clamp(680px,calc((100dvh-96px)*1.15),920px)]' : project.id === 'ai-live-drama-case' ? 'w-[clamp(640px,calc((100dvh-96px)*1),860px)]' : 'w-[clamp(460px,calc((100dvh-96px)*0.78),600px)]'}`}
       style={{
-        left: project.id === 'ai-live-drama-case' ? 'max(3vw, calc(50vw - min(430px, max(320px, (100dvh - 96px) * 0.5))))' : 'max(3vw, calc(50vw - min(300px, max(230px, (100dvh - 96px) * 0.39))))',
+        left: project.caseStudy
+          ? 'max(3vw, calc(50vw - min(460px, max(340px, (100dvh - 96px) * 0.575))))'
+          : isWideProject
+            ? 'max(3vw, calc(50vw - min(430px, max(320px, (100dvh - 96px) * 0.5))))'
+            : 'max(3vw, calc(50vw - min(300px, max(230px, (100dvh - 96px) * 0.39))))',
         top: 'clamp(18px, calc(50dvh - 340px), 72px)',
         x: offsetX,
         y: offsetY,
@@ -266,7 +273,15 @@ function Window(props: { project: Project; onClose: () => void; onFocus: () => v
         <div className="w-12"></div>
       </div>
 
-      <div className="flex-1 overflow-y-auto no-scrollbar bg-white/95 backdrop-blur-md flex flex-col p-[clamp(16px,2.3dvh,24px)]">
+      <div className={`flex-1 overflow-y-auto no-scrollbar bg-white/95 backdrop-blur-md flex flex-col ${project.caseStudy ? 'p-0' : 'p-[clamp(16px,2.3dvh,24px)]'}`}>
+        {project.caseStudy ? (
+          <PromptCatcherCaseStudy
+            project={project}
+            show={showPreviews}
+            onOpenImage={openLightbox}
+          />
+        ) : (
+        <>
         <div className="flex items-start gap-4 mb-[clamp(16px,2.3dvh,24px)]">
           <div className="h-[clamp(52px,6dvh,64px)] w-[clamp(52px,6dvh,64px)] shrink-0 flex items-center justify-center bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
             <img src={project.iconSrc} alt={project.title} className="max-w-full max-h-full object-contain" />
@@ -426,6 +441,8 @@ function Window(props: { project: Project; onClose: () => void; onFocus: () => v
             })()}
           </div>
         </motion.div>
+        </>
+        )}
       </div>
     </motion.div>
 
@@ -467,82 +484,403 @@ function Window(props: { project: Project; onClose: () => void; onFocus: () => v
   </>
   );
 }
-function SafariWindow({ onClose }: { onClose: () => void }) {
-  const safariTabs = [
-    { id: 'kv', label: '一键详情页生成器', url: 'https://kv.zerinnai.online/', scale: 0.84 },
-    { id: 'cover', label: '一键视频封面生成器', url: 'https://cover.zerinnai.online/', scale: 0.72 },
-    { id: 'home', label: '无限画布', url: 'https://www.zerinnai.online/', scale: 0.9 },
-  ] as const;
-  const [activeTabId, setActiveTabId] = useState<(typeof safariTabs)[number]['id']>('kv');
-  const activeTab = safariTabs.find((tab) => tab.id === activeTabId) ?? safariTabs[0];
-  const iframeScale = activeTab.scale;
-  const iframeWidth = `${100 / iframeScale}%`;
-  const iframeHeight = `${100 / iframeScale}%`;
+
+function PromptCatcherCaseStudy({
+  project,
+  show,
+  onOpenImage,
+}: {
+  project: Project;
+  show: boolean;
+  onOpenImage: (preview: PreviewItem) => void;
+}) {
+  const caseStudy = project.caseStudy!;
+  const [
+    storePreview,
+    demoPreview,
+    reversePromptPreview,
+    generationResultPreview,
+    settingsPreview,
+    adoptionPreview,
+  ] = project.previews;
+
+  const imageButton = (preview: PreviewItem, className: string) => (
+    <button
+      type="button"
+      className={`group relative block w-full overflow-hidden text-left ${className}`}
+      onClick={() => onOpenImage(preview)}
+      aria-label={`放大查看：${preview.title ?? project.title}`}
+    >
+      <img
+        src={preview.src}
+        alt={preview.title ?? project.title}
+        className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-[1.015]"
+        loading="lazy"
+        decoding="async"
+      />
+      <span className="absolute bottom-3 right-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/80 text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+        <i className="fa-solid fa-magnifying-glass-plus text-xs" />
+      </span>
+    </button>
+  );
 
   return (
-    <motion.div
-      drag
-      dragMomentum={false}
-      initial={{ opacity: 0, scale: 0.94 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.96 }}
-      transition={{ type: 'spring', damping: 22, stiffness: 280, mass: 0.85 }}
-      data-project-window
-      className="absolute left-1/2 top-1/2 z-[120] flex h-[min(1090px,96vh)] w-[min(1240px,97vw)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[22px] border border-white/60 bg-[#f6f6f6]/95 text-black shadow-[0_30px_80px_rgba(0,0,0,0.28)] backdrop-blur-xl"
+    <motion.article
+      className="bg-white text-[#111111]"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: show ? 1 : 0 }}
+      transition={{ duration: 0.24, ease: 'easeOut' }}
     >
-      <div className="flex items-center gap-3 border-b border-[#d8d2c4] bg-[#ece9e1]/95 px-4 py-2 select-none">
-        <div className="flex gap-2">
-          <button onClick={onClose} className="flex h-3 w-3 items-center justify-center rounded-full border border-[#e0443e] bg-[#ff5f56]" />
-          <button className="flex h-3 w-3 items-center justify-center rounded-full border border-[#dea123] bg-[#ffbd2e]" />
-          <button className="flex h-3 w-3 items-center justify-center rounded-full border border-[#1aab29] bg-[#27c93f]" />
-        </div>
-        <div className="flex min-w-0 flex-1 items-center justify-center gap-3">
-          <div className="flex items-center gap-2 text-sm font-semibold text-[#5f5b69]">
-            <img src="/dock-icons/1-1.png" alt="Safari" className="h-5 w-5 rounded-[6px]" draggable={false} />
-            <span>Safari</span>
+      <section className="bg-[#111111] px-6 py-7 text-white md:px-10 md:py-10">
+        <div className="flex flex-col gap-7 md:flex-row md:items-start md:justify-between">
+          <div className="max-w-[620px]">
+            <div className="mb-5 flex items-center gap-3">
+              <img src={project.iconSrc} alt="" className="h-12 w-12 rounded-md" />
+              <div>
+                <p className="text-[10px] font-black text-[#ffe45c]">{caseStudy.kicker}</p>
+                <p className="mt-1 text-xs text-white/60">独立设计与开发 · 2026</p>
+              </div>
+            </div>
+            <h1 className="max-w-[590px] text-3xl font-black leading-[1.15] md:text-[40px]">
+              {caseStudy.headline}
+            </h1>
+            <p className="mt-5 max-w-[600px] text-sm leading-7 text-white/72">
+              {project.description}
+            </p>
           </div>
-          <div className="min-w-[220px] max-w-[680px] flex-1 rounded-full border border-[#d7d1c5] bg-white/90 px-4 py-1.5 text-center text-[13px] text-[#5a5568] shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)]">
-            {activeTab.url}
-          </div>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2 border-b border-[#ddd7ca] bg-[#f2efe8]/95 px-4 py-2">
-        {safariTabs.map((tab) => {
-          const isActive = tab.id === activeTab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTabId(tab.id)}
-              className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${isActive ? 'bg-white text-[#2f2a3b] shadow-sm border border-[#d7d1c5]' : 'bg-transparent text-[#6b6677] border border-transparent hover:bg-white/70 hover:border-[#d7d1c5]'}`}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="flex-1 overflow-hidden bg-[#f3efe7] p-3">
-        <div className="h-full w-full overflow-hidden rounded-[18px] border border-[#d9d3c6] bg-white">
-          <div
-            className="h-full w-full origin-top-left"
-            style={{
-              transform: `scale(${iframeScale})`,
-            }}
+          <a
+            href={caseStudy.storeUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex shrink-0 items-center justify-center gap-2 self-start bg-[#ffe45c] px-4 py-3 text-xs font-black text-black transition-colors hover:bg-white"
           >
-            <iframe
-              src={activeTab.url}
-              title={`Safari ${activeTab.label}`}
-              className="border-0 bg-white"
-              style={{ width: iframeWidth, height: iframeHeight }}
-              loading="lazy"
-              referrerPolicy="strict-origin-when-cross-origin"
-            />
+            查看 Chrome 商店
+            <i className="fa-solid fa-arrow-up-right-from-square" />
+          </a>
+        </div>
+        <div className="mt-8 inline-flex items-center gap-2 border border-[#ffe45c]/50 px-3 py-2 text-[11px] font-bold text-[#ffe45c]">
+          <span className="h-2 w-2 rounded-full bg-[#ffe45c]" />
+          {caseStudy.status}
+        </div>
+      </section>
+
+      <section className="grid grid-cols-2 border-b border-[#d8d8d8] md:grid-cols-4">
+        {caseStudy.metrics.map((metric, index) => (
+          <div
+            key={metric.label}
+            className={`px-5 py-5 md:px-7 ${index % 2 !== 0 ? '' : 'border-r border-[#d8d8d8]'} ${index > 1 ? 'border-t border-[#d8d8d8] md:border-t-0' : ''} ${index === 1 ? 'md:border-r' : ''}`}
+          >
+            <div className="text-2xl font-black md:text-3xl">{metric.value}</div>
+            <div className="mt-1 text-[11px] font-medium text-black/55">{metric.label}</div>
+          </div>
+        ))}
+      </section>
+
+      <section className="grid border-b border-[#d8d8d8] md:grid-cols-2">
+        {[caseStudy.problem, caseStudy.solution].map((item, index) => (
+          <div key={item.title} className={`px-6 py-8 md:px-10 md:py-10 ${index === 0 ? 'md:border-r md:border-[#d8d8d8]' : ''}`}>
+            <p className="text-[10px] font-black text-black/45">{index === 0 ? '01 / 问题' : '02 / 解法'}</p>
+            <h2 className="mt-3 text-xl font-black leading-tight">{item.title}</h2>
+            <p className="mt-4 text-[13px] leading-6 text-black/65">{item.body}</p>
+          </div>
+        ))}
+      </section>
+
+      <section className="px-6 py-8 md:px-10 md:py-10">
+        <div className="mb-5 flex items-end justify-between gap-5">
+          <div>
+            <p className="text-[10px] font-black text-black/45">03 / 上架结果</p>
+            <h2 className="mt-2 text-2xl font-black">从可用工具到公开产品</h2>
+          </div>
+          <p className="hidden max-w-[290px] text-right text-xs leading-5 text-black/50 md:block">
+            已通过 Chrome Web Store 审核公开发布，商店评分 5.0。
+          </p>
+        </div>
+        {imageButton(storePreview, 'aspect-[1.353/1] border border-[#d8d8d8] bg-[#f6f6f6]')}
+        <p className="mt-3 text-[11px] leading-5 text-black/50">{storePreview.title}</p>
+      </section>
+
+      <section className="border-y border-[#d8d8d8] bg-[#f5f5f2] px-6 py-8 md:px-10 md:py-10">
+        <p className="text-[10px] font-black text-black/45">04 / 使用流程</p>
+        <h2 className="mt-2 text-2xl font-black">一次点击，四步完成视觉反推</h2>
+        <div className="mt-7 grid md:grid-cols-4">
+          {caseStudy.workflow.map((item, index) => (
+            <div key={item.step} className={`py-4 md:px-5 md:py-0 ${index > 0 ? 'border-t border-black/15 md:border-l md:border-t-0' : ''} ${index === 0 ? 'md:pl-0' : ''}`}>
+              <span className="text-xs font-black text-[#ad8b00]">{item.step}</span>
+              <h3 className="mt-2 text-sm font-black">{item.title}</h3>
+              <p className="mt-2 text-xs leading-5 text-black/55">{item.body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="bg-[#111111] px-6 py-8 text-white md:px-10 md:py-10">
+        <div className="mb-5 flex flex-col justify-between gap-3 md:flex-row md:items-end">
+          <div>
+            <p className="text-[10px] font-black text-[#ffe45c]">05 / 产品演示</p>
+            <h2 className="mt-2 text-2xl font-black">从网页灵感到可复用 Prompt</h2>
+          </div>
+          <p className="text-xs text-white/50">完整演示 · 04:35</p>
+        </div>
+        <video
+          src={demoPreview.src}
+          controls
+          playsInline
+          preload="metadata"
+          className="aspect-video w-full bg-black object-contain"
+        />
+        <p className="mt-3 text-[11px] leading-5 text-white/45">{demoPreview.title}</p>
+      </section>
+
+      <section className="px-6 py-8 md:px-10 md:py-10">
+        <div className="max-w-[680px]">
+          <p className="text-[10px] font-black text-black/45">06 / 实测闭环</p>
+          <h2 className="mt-2 text-2xl font-black">反推不止复述画面，也能驱动定向改图</h2>
+          <p className="mt-4 text-[13px] leading-6 text-black/60">
+            这次测试从小红书网页中的商业人像开始。插件先拆解人物、构图、镜头、光色和空间关系，再追加“把人物手中的绿色饮料改为 iPhone 17 手机”的修改意图，最后将整理后的提示词投入生图流程。
+          </p>
+        </div>
+
+        <figure className="mt-7">
+          <div className="flex items-center justify-between border border-b-0 border-[#d8d8d8] bg-[#f5f5f2] px-4 py-3">
+            <span className="text-[10px] font-black">STEP A · 原图反推与修改指令</span>
+            <span className="text-[10px] font-bold text-black/40">网页内完成</span>
+          </div>
+          {imageButton(reversePromptPreview, 'aspect-[1.353/1] border border-[#d8d8d8] bg-[#f6f6f6]')}
+          <figcaption className="mt-3 text-[11px] leading-5 text-black/50">{reversePromptPreview.title}</figcaption>
+        </figure>
+
+        <div className="my-7 grid border-y border-black/15 md:grid-cols-3">
+          {[
+            ['01', '捕捉网页原图'],
+            ['02', '提取结构化视觉信息'],
+            ['03', '注入明确修改意图'],
+          ].map(([step, label], index) => (
+            <div key={step} className={`flex items-center gap-3 py-4 md:px-5 ${index > 0 ? 'border-t border-black/15 md:border-l md:border-t-0' : 'md:pl-0'}`}>
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#ffe45c] text-[10px] font-black">{step}</span>
+              <span className="text-xs font-black">{label}</span>
+            </div>
+          ))}
+        </div>
+
+        <figure>
+          <div className="flex items-center justify-between border border-b-0 border-[#d8d8d8] bg-[#111111] px-4 py-3 text-white">
+            <span className="text-[10px] font-black text-[#ffe45c]">STEP B · 实际生图结果</span>
+            <span className="text-[10px] font-bold text-white/45">左：原图 / 右：结果</span>
+          </div>
+          {imageButton(generationResultPreview, 'aspect-[1.353/1] border border-[#d8d8d8] bg-[#111111]')}
+          <figcaption className="mt-3 text-[11px] leading-5 text-black/50">{generationResultPreview.title}</figcaption>
+        </figure>
+
+        <div className="mt-7 grid border-y border-black/15 md:grid-cols-3">
+          {[
+            ['人物与表情', '稳定保留'],
+            ['构图与高调影调', '稳定保留'],
+            ['绿色饮料 → 手机', '定向替换'],
+          ].map(([label, value], index) => (
+            <div key={label} className={`py-4 md:px-5 ${index > 0 ? 'border-t border-black/15 md:border-l md:border-t-0' : 'md:pl-0'}`}>
+              <p className="text-[10px] font-bold text-black/45">{label}</p>
+              <p className="mt-1 text-sm font-black">{value}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="border-t border-[#d8d8d8] px-6 py-8 md:px-10 md:py-10">
+        <p className="text-[10px] font-black text-black/45">07 / 产品能力</p>
+        <h2 className="mt-2 text-2xl font-black">不是一次性的提示词生成器</h2>
+        <div className="mt-7 grid border-y border-black/15 md:grid-cols-2">
+          {caseStudy.capabilities.map((item, index) => (
+            <div
+              key={item.title}
+              className={`py-5 md:px-6 ${index % 2 === 0 ? 'md:border-r md:border-black/15 md:pl-0' : ''} ${index > 1 ? 'border-t border-black/15' : index === 1 ? 'border-t border-black/15 md:border-t-0' : ''}`}
+            >
+              <h3 className="text-sm font-black">{item.title}</h3>
+              <p className="mt-2 text-xs leading-5 text-black/58">{item.body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="grid border-y border-[#d8d8d8] bg-[#f5f5f2] md:grid-cols-[1.08fr_0.92fr]">
+        <div className="border-b border-[#d8d8d8] p-5 md:border-b-0 md:border-r md:p-8">
+          {imageButton(settingsPreview, 'aspect-[1.353/1] bg-white')}
+        </div>
+        <div className="flex flex-col justify-center px-6 py-8 md:px-9">
+          <p className="text-[10px] font-black text-black/45">08 / 开放配置</p>
+          <h2 className="mt-2 text-xl font-black">模型选择权留给用户</h2>
+          <p className="mt-4 text-[13px] leading-6 text-black/62">
+            插件不绑定单一模型或平台代理。用户可以选择常见服务商，也可以填写自己的 OpenAI 兼容接口、API Key 与模型名称；配置完成后保存在浏览器中。
+          </p>
+          <p className="mt-4 text-[11px] font-bold text-black/42">{settingsPreview.title}</p>
+        </div>
+      </section>
+
+      <section className="bg-[#242424] px-6 py-8 text-white md:px-10 md:py-10">
+        <p className="text-[10px] font-black text-[#ffe45c]">09 / 工程实现</p>
+        <h2 className="mt-2 text-2xl font-black">为真实网页环境做的技术选择</h2>
+        <div className="mt-7 grid gap-x-8 gap-y-6 md:grid-cols-2">
+          {caseStudy.engineering.map((item) => (
+            <div key={item.title} className="border-t border-white/18 pt-4">
+              <h3 className="text-sm font-black">{item.title}</h3>
+              <p className="mt-2 text-xs leading-5 text-white/55">{item.body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="px-6 py-8 md:px-10 md:py-10">
+        <div className="mb-5">
+          <p className="text-[10px] font-black text-black/45">10 / 真实反馈</p>
+          <h2 className="mt-2 text-2xl font-black">发布之后，产品开始被真实用户使用</h2>
+          <p className="mt-3 max-w-[650px] text-[13px] leading-6 text-black/60">
+            开发者后台记录了 118 次累计安装，用户来自美国、中国、日本等地区，并覆盖 Windows、ChromeOS 与 macOS。对一个独立开发的效率工具而言，上架不是终点，而是进入真实使用场景的开始。
+          </p>
+        </div>
+        {imageButton(adoptionPreview, 'aspect-[1.535/1] border border-[#d8d8d8] bg-[#f6f6f6]')}
+        <div className="mt-6 flex flex-col justify-between gap-4 border-t border-black/15 pt-6 md:flex-row md:items-center">
+          <p className="max-w-[540px] text-sm font-bold leading-6">
+            这个项目展示了我从需求判断、交互设计和模型接入，到扩展开发、隐私合规与商店发布的完整产品能力。
+          </p>
+          <a
+            href={caseStudy.storeUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex shrink-0 items-center justify-center gap-2 bg-black px-4 py-3 text-xs font-black text-white transition-colors hover:bg-[#ad8b00]"
+          >
+            打开 Chrome 商店
+            <i className="fa-solid fa-arrow-up-right-from-square" />
+          </a>
+        </div>
+      </section>
+    </motion.article>
+  );
+}
+
+function SafariWindow({ project, onClose }: { project: Project; onClose: () => void }) {
+  const dragControls = useDragControls();
+  const [lightboxPreview, setLightboxPreview] = useState<PreviewItem | null>(null);
+
+  useEffect(() => {
+    if (!lightboxPreview) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setLightboxPreview(null);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [lightboxPreview]);
+
+  return (
+    <>
+      <motion.div
+        drag
+        dragControls={dragControls}
+        dragListener={false}
+        dragMomentum={false}
+        initial={{ opacity: 0, scale: 0.94 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.96 }}
+        transition={{ type: 'spring', damping: 22, stiffness: 280, mass: 0.85 }}
+        data-project-window
+        data-safari-project-window
+        className="absolute left-1/2 top-1/2 z-[120] flex h-[min(940px,92dvh)] w-[min(1120px,96vw)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[12px] border border-black/15 bg-[#e9e9e9] text-black shadow-[0_34px_90px_rgba(0,0,0,0.32)]"
+      >
+        <div
+          className="flex h-12 shrink-0 cursor-grab items-center gap-3 border-b border-black/12 bg-[#ececec]/95 px-4 select-none active:cursor-grabbing"
+          onPointerDown={(event) => dragControls.start(event)}
+        >
+          <div className="flex shrink-0 gap-2">
+            <button type="button" onClick={onClose} aria-label="关闭 Safari" className="h-3 w-3 rounded-full border border-[#e0443e] bg-[#ff5f56]" />
+            <button type="button" aria-label="最小化" className="h-3 w-3 rounded-full border border-[#dea123] bg-[#ffbd2e]" />
+            <button type="button" aria-label="全屏" className="h-3 w-3 rounded-full border border-[#1aab29] bg-[#27c93f]" />
+          </div>
+
+          <div className="hidden shrink-0 items-center gap-1 md:flex">
+            <button type="button" title="后退" className="flex h-7 w-7 items-center justify-center rounded-[6px] text-black/35 hover:bg-black/7">
+              <i className="fa-solid fa-chevron-left text-[11px]" />
+            </button>
+            <button type="button" title="前进" className="flex h-7 w-7 items-center justify-center rounded-[6px] text-black/25 hover:bg-black/7">
+              <i className="fa-solid fa-chevron-right text-[11px]" />
+            </button>
+            <button type="button" title="显示边栏" className="flex h-7 w-7 items-center justify-center rounded-[6px] text-black/55 hover:bg-black/7">
+              <i className="fa-regular fa-window-maximize text-[11px]" />
+            </button>
+          </div>
+
+          <div className="flex min-w-0 flex-1 justify-center">
+            <div className="flex h-7 w-full max-w-[620px] items-center justify-center gap-2 rounded-[7px] border border-black/8 bg-white/75 px-3 text-[12px] text-black/62 shadow-[inset_0_1px_1px_rgba(0,0,0,0.05)]">
+              <i className="fa-solid fa-lock text-[9px] text-black/35" />
+              <span className="truncate">zerinn.local / 我的项目 / prompt-catcher</span>
+            </div>
+          </div>
+
+          <div className="hidden shrink-0 items-center gap-1 md:flex">
+            <button type="button" title="分享" className="flex h-7 w-7 items-center justify-center rounded-[6px] text-black/55 hover:bg-black/7">
+              <i className="fa-solid fa-arrow-up-from-bracket text-[11px]" />
+            </button>
+            <button type="button" title="新建标签页" className="flex h-7 w-7 items-center justify-center rounded-[6px] text-black/55 hover:bg-black/7">
+              <i className="fa-solid fa-plus text-[11px]" />
+            </button>
           </div>
         </div>
-      </div>
-    </motion.div>
+
+        <div className="flex h-9 shrink-0 items-end border-b border-black/12 bg-[#dedede] px-3 pt-1.5">
+          <div className="flex h-8 min-w-0 max-w-[320px] flex-1 items-center gap-2 rounded-t-[8px] border border-b-0 border-black/10 bg-white px-3 text-[12px] font-medium text-black/72 shadow-[0_-1px_2px_rgba(0,0,0,0.03)]">
+            <img src={project.iconSrc} alt="" className="h-4 w-4 rounded-[3px]" draggable={false} />
+            <span className="truncate">我的项目 · {project.title}</span>
+            <i className="fa-solid fa-xmark ml-auto text-[9px] text-black/30" />
+          </div>
+          <button type="button" title="新建标签页" className="ml-2 mb-1 flex h-6 w-6 items-center justify-center rounded-[5px] text-black/45 hover:bg-black/7">
+            <i className="fa-solid fa-plus text-[10px]" />
+          </button>
+        </div>
+
+        <div className="no-scrollbar flex-1 overflow-y-auto bg-white">
+          <PromptCatcherCaseStudy
+            project={project}
+            show
+            onOpenImage={setLightboxPreview}
+          />
+        </div>
+      </motion.div>
+
+      <AnimatePresence>
+        {lightboxPreview && (
+          <motion.div
+            data-lightbox
+            className="fixed inset-0 z-[999] flex items-center justify-center bg-black/78 p-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setLightboxPreview(null)}
+          >
+            <motion.div
+              className="relative max-h-[92vh] max-w-[92vw]"
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={() => setLightboxPreview(null)}
+                aria-label="关闭图片预览"
+                className="absolute -right-4 -top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white text-black shadow-lg"
+              >
+                <i className="fa-solid fa-xmark" />
+              </button>
+              <img
+                src={lightboxPreview.src}
+                alt={lightboxPreview.title ?? `${project.title} enlarged preview`}
+                className="max-h-[92vh] max-w-[92vw] rounded-[8px] object-contain shadow-2xl"
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
@@ -823,7 +1161,7 @@ function DockIcon({ iconName, hoveredIcon, isDockDragging, hasGroupGap, onHoverC
           transition={{ duration: 1.9, ease: 'easeInOut', repeat: Infinity }}
         >
           <div className="whitespace-nowrap rounded-[18px] border border-white/80 bg-white px-4 py-2 text-[14px] font-bold tracking-[0.01em] text-[#121212] shadow-[0_14px_30px_rgba(0,0,0,0.22)]">
-            点击查看我的一些小项目
+            我的项目
           </div>
           <div className="-mt-1.5 h-3.5 w-3.5 rotate-45 rounded-[3px] border-r border-b border-black/5 bg-white shadow-[4px_4px_10px_rgba(0,0,0,0.06)]" />
         </motion.div>
