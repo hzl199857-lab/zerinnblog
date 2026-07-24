@@ -8,6 +8,20 @@ import {
   parseDockOrder,
 } from './dockOrder';
 
+test('uses the requested dock order by default', () => {
+  assert.deepEqual(DEFAULT_DOCK_ORDER, [
+    '1-1',
+    '1-2',
+    '2-1',
+    '1-3',
+    '1-4',
+    '2-2',
+    '3-1',
+    '3-2',
+    '4-1',
+  ]);
+});
+
 test('keeps a valid stored dock order', () => {
   const reversed = [...DEFAULT_DOCK_ORDER].reverse();
 

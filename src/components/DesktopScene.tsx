@@ -14,17 +14,22 @@ type ActiveWindow = {
   offsetY: number;
 };
 
-const ENABLE_SAFARI_DOCK_ENTRY = true;
 const DOCK_LONG_PRESS_MS = 150;
 const DOCK_PRESS_MOVE_TOLERANCE = 8;
-const DOCK_SEPARATOR_LEFTS = [224, 349, 474];
+const DOCK_SEPARATOR_LEFTS = [224, 461];
+const DOCK_LABELS: Record<string, string> = {
+  '1-1': '我的项目',
+  '1-2': '联系我',
+  '2-1': '我的简历',
+};
+const DOCK_BUBBLE_IDS = ['1-1', '1-2', '2-1'];
 const promptCatcherProject = projects.find((project) => project.id === 'prompt-catcher');
 
 export default function DesktopScene({ isUnlocking, isUnlocked, revealProgress, backgroundProgress }: { isUnlocking: boolean; isUnlocked: boolean; revealProgress: number; backgroundProgress: number }) {
   const [activeWindows, setActiveWindows] = useState<ActiveWindow[]>([]);
-  const [hoveredDockIcon, setHoveredDockIcon] = useState<string | null>(null);
   const [isContactWindowOpen, setIsContactWindowOpen] = useState(false);
   const [isSafariWindowOpen, setIsSafariWindowOpen] = useState(false);
+  const [isResumeWindowOpen, setIsResumeWindowOpen] = useState(false);
 
   const toggleWindow = (project: Project) => {
     setActiveWindows((prev) => {
@@ -56,7 +61,6 @@ export default function DesktopScene({ isUnlocking, isUnlocked, revealProgress, 
   const progress = Math.min(1, backgroundProgress);
   const shellOpacity = 1;
   const shellBlur = progress * 8;
-  const isDockTooltipHovered = hoveredDockIcon === '1-1' || hoveredDockIcon === '1-2';
 
   return (
     <div className="relative w-screen h-screen overflow-hidden text-white font-sans selection:bg-white/30">
@@ -71,13 +75,7 @@ export default function DesktopScene({ isUnlocking, isUnlocked, revealProgress, 
         <div className="absolute inset-0 bg-white/5" />
       </div>
 
-      <div
-        className="relative h-full w-full transition-all duration-200"
-        style={{
-          filter: isDockTooltipHovered ? 'blur(12px)' : undefined,
-          backdropFilter: isDockTooltipHovered ? 'saturate(0.9)' : undefined,
-        }}
-      >
+      <div className="relative h-full w-full transition-all duration-200">
         <div className="relative z-10 w-full h-full p-8">
           {projects.filter((project) => !project.caseStudy).map((project, index) => (
             <DesktopIcon
@@ -118,15 +116,15 @@ export default function DesktopScene({ isUnlocking, isUnlocked, revealProgress, 
         )}
       </AnimatePresence>
 
-      {isDockTooltipHovered && (
-        <div className="pointer-events-none absolute inset-0 z-30 bg-white/12 backdrop-blur-md" />
-      )}
+      <AnimatePresence>
+        {isResumeWindowOpen && (
+          <ResumeWindow onClose={() => setIsResumeWindowOpen(false)} />
+        )}
+      </AnimatePresence>
 
       <Dock
         show={show}
         revealProgress={revealProgress}
-        hoveredIcon={hoveredDockIcon}
-        onHoverChange={setHoveredDockIcon}
         onIconClick={(iconName) => {
           if (iconName === '1-1') {
             setIsSafariWindowOpen(true);
@@ -134,6 +132,10 @@ export default function DesktopScene({ isUnlocking, isUnlocked, revealProgress, 
 
           if (iconName === '1-2') {
             setIsContactWindowOpen(true);
+          }
+
+          if (iconName === '2-1') {
+            setIsResumeWindowOpen(true);
           }
         }}
       />
@@ -884,6 +886,183 @@ function SafariWindow({ project, onClose }: { project: Project; onClose: () => v
   );
 }
 
+function ResumeWindow({ onClose }: { onClose: () => void }) {
+  const dragControls = useDragControls();
+  const workHistory = [
+    {
+      company: '广州太平洋电脑信息咨询有限公司',
+      role: '其他技术职位',
+      date: '2022.04 — 2026.01',
+      summary: '担任素材组组长，对接投放团队，带领 4 人素材中台团队完成原创/AI 视频与图片素材的整理、剪辑、特效、调色和字幕制作。',
+      bullets: [
+        '东风风神 L8 原创素材计划当月消耗超 70 万，奔驰原创素材计划当月消耗超 43 万，客户次月追加预算。',
+        '使用扣子制作工作流对接飞书，为小红书图文投放制作爆款二创智能体，在飞书表格输入链接即可生成对应结果。',
+        '使用 ComfyUI 搭建 TTS 语音克隆工作流，让配音更具情感和拟人化，提高视频产出效率。',
+        '使用 ComfyUI 为团队制作一键换背景应用，方便同事快速迭代车辆图片。',
+      ],
+    },
+    {
+      company: '广州素隐商贸有限公司',
+      role: '后期制作',
+      date: '2020.06 — 2022.02',
+      summary: '独立负责留香珠、漱口水等 20 多个品类的信息流后期剪辑，服务巨量千川、UD、鲁班等平台及理然、素士等 S 级客户。',
+      bullets: [
+        '单条视频计划最高当天 GMV 超 16 万、ROI 超 1.3，当月总 GMV 超 28 万；迭代视频累计统计量超过 50 万。',
+        '独立负责商务、市场部门的视频需求，以及直播间引流视频的贴图和视频后期制作。',
+        '为部门制作素材查找指南、搬运裂变软件使用方法等 SOP，提高小组制作效率。',
+        '参与外拍与配音工作，熟悉短视频素材从拍摄到交付的完整流程。',
+      ],
+    },
+    {
+      company: '广州前方高能网络科技有限公司',
+      role: '编导',
+      date: '2019.11 — 2020.06',
+      summary: '负责短视频账号内容策划、数据监测与效果分析，与团队探索快速获取流量的方法。',
+      bullets: [
+        '账号从零开始运营，不到 3 个月涨粉 23 万；多个视频播放量过百万，最高播放量超过 980 万、点赞 71 万。',
+        '作为组长完成脚本、分镜、拍摄、后期剪辑全流程，具备产品推广类剧情视频经验。',
+        '在职期间表现优秀，获得公司资金奖励。',
+      ],
+    },
+  ];
+
+  return (
+    <motion.div
+      drag
+      dragControls={dragControls}
+      dragListener={false}
+      dragMomentum={false}
+      initial={{ opacity: 0, scale: 0.94 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.96 }}
+      transition={{ type: 'spring', damping: 22, stiffness: 280, mass: 0.85 }}
+      data-project-window
+      className="absolute left-1/2 top-1/2 z-[130] flex h-[min(900px,90dvh)] w-[min(940px,94vw)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[16px] border border-black/12 bg-[#f7f7f5] text-[#171717] shadow-[0_34px_90px_rgba(0,0,0,0.3)]"
+    >
+      <div
+        className="flex h-12 shrink-0 cursor-grab items-center justify-between border-b border-black/10 bg-[#ececea]/95 px-4 select-none active:cursor-grabbing"
+        onPointerDown={(event) => dragControls.start(event)}
+      >
+        <div className="flex gap-2">
+          <button type="button" onClick={onClose} aria-label="关闭简历" className="h-3 w-3 rounded-full border border-[#e0443e] bg-[#ff5f56]" />
+          <button type="button" aria-label="最小化" className="h-3 w-3 rounded-full border border-[#dea123] bg-[#ffbd2e]" />
+          <button type="button" aria-label="全屏" className="h-3 w-3 rounded-full border border-[#1aab29] bg-[#27c93f]" />
+        </div>
+        <div className="flex items-center gap-2 text-xs font-bold tracking-[0.18em] text-black/60">
+          <i className="fa-regular fa-file-lines text-black/40" />
+          我的简历
+        </div>
+        <div className="w-12" />
+      </div>
+
+      <div className="no-scrollbar flex-1 overflow-y-auto bg-[#fbfbfa]">
+        <article className="mx-auto max-w-[820px] px-6 py-8 md:px-12 md:py-11">
+          <header className="border-b border-black/12 pb-7">
+            <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-start">
+              <div>
+                <p className="text-[11px] font-bold tracking-[0.22em] text-[#9b7b00]">PERSONAL RESUME</p>
+                <h1 className="mt-2 text-[38px] font-black tracking-[-0.04em] text-[#151515] md:text-[46px]">何泽霖</h1>
+                <p className="mt-2 text-sm font-medium text-black/55">后期制作 · AIGC / 视频内容创作</p>
+              </div>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs leading-5 text-black/60 sm:text-right">
+                <span>男 · 28 岁</span>
+                <span>6 年工作经验</span>
+                <span>13104899857</span>
+                <span>867491350@qq.com</span>
+                <span>期望薪资 15 — 20K</span>
+                <span>期望城市：广州</span>
+              </div>
+            </div>
+            <div className="mt-6 flex flex-wrap gap-2 text-[11px] font-bold text-black/65">
+              <span className="border border-black/12 bg-white px-3 py-1.5">求职意向：后期制作</span>
+              <span className="border border-black/12 bg-white px-3 py-1.5">个人网站：zerinnai.online</span>
+            </div>
+          </header>
+
+          <section className="border-b border-black/10 py-7">
+            <SectionHeading index="01" title="个人优势" />
+            <p className="mt-4 text-[13px] leading-6 text-black/65">我认为我最大的优势是保持好奇心与持续学习的能力。熟悉剪映、PS、PR、AE、达芬奇等软件，热爱剪辑并持续探索 AI 在内容生产中的落地。</p>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              {[
+                ['AIGC 实战', '模型训练与工作流搭建，个人模型和工作流累计使用量超过 50K。'],
+                ['AI 工作流', '熟悉 ComfyUI、即梦、可灵等开源与闭源模型，具备 Vibe Coding 实战经验。'],
+                ['内容制作', '有 20 多个品类的信息流剪辑经验，并运营过 10 万粉丝自媒体账号。'],
+              ].map(([title, body]) => (
+                <div key={title} className="border-l-2 border-[#e4c33c] bg-white px-4 py-3">
+                  <h3 className="text-xs font-black">{title}</h3>
+                  <p className="mt-1.5 text-xs leading-5 text-black/55">{body}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="border-b border-black/10 py-7">
+            <SectionHeading index="02" title="工作经历" />
+            <div className="mt-5 space-y-7">
+              {workHistory.map((item) => (
+                <div key={`${item.company}-${item.role}`} className="relative border-l border-black/15 pl-5">
+                  <div className="absolute -left-[4px] top-1.5 h-2 w-2 rounded-full bg-[#d4ae16]" />
+                  <div className="flex flex-col justify-between gap-1 sm:flex-row sm:items-baseline">
+                    <h3 className="text-[15px] font-black">{item.company}</h3>
+                    <span className="text-[11px] font-bold text-black/42">{item.date}</span>
+                  </div>
+                  <p className="mt-1 text-xs font-bold text-[#9b7b00]">{item.role}</p>
+                  <p className="mt-2 text-[13px] leading-6 text-black/65">{item.summary}</p>
+                  <ul className="mt-2 space-y-1.5 pl-4 text-[12px] leading-5 text-black/58">
+                    {item.bullets.map((bullet) => <li key={bullet}>{bullet}</li>)}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="grid gap-8 border-b border-black/10 py-7 md:grid-cols-[0.95fr_1.05fr]">
+            <div>
+              <SectionHeading index="03" title="教育经历" />
+              <div className="mt-5 border-l border-black/15 pl-5">
+                <h3 className="text-[15px] font-black">广东财经大学</h3>
+                <p className="mt-1 text-xs font-bold text-[#9b7b00]">本科 · 公共事业管理</p>
+                <p className="mt-2 text-[11px] text-black/45">2016 — 2020</p>
+              </div>
+            </div>
+            <div>
+              <SectionHeading index="04" title="校内荣誉" />
+              <ul className="mt-5 space-y-2 pl-4 text-[12px] leading-5 text-black/60">
+                <li>2016 — 2017 年度“优秀共青团干部”（学院 5% 人获得）</li>
+                <li>2018 — 2019 年度“优秀学生干部”专项奖学金</li>
+                <li>大学期间录为中共党员</li>
+                <li>担任 3 年班级组织委员、1 年辅导员助理、1 年院组织部成员</li>
+              </ul>
+            </div>
+          </section>
+
+          <section className="pt-7">
+            <SectionHeading index="05" title="资格证书" />
+            <div className="mt-5 flex flex-wrap gap-3">
+              {['大学英语四级', '计算机二级'].map((certificate) => (
+                <div key={certificate} className="flex items-center gap-2 border border-black/12 bg-white px-4 py-3 text-sm font-bold">
+                  <i className="fa-solid fa-certificate text-[12px] text-[#c7a119]" />
+                  {certificate}
+                </div>
+              ))}
+            </div>
+          </section>
+        </article>
+      </div>
+    </motion.div>
+  );
+}
+
+function SectionHeading({ index, title }: { index: string; title: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="text-[10px] font-black tracking-[0.16em] text-[#b2941d]">{index}</span>
+      <h2 className="text-[18px] font-black tracking-[-0.02em]">{title}</h2>
+      <span className="h-px flex-1 bg-black/10" />
+    </div>
+  );
+}
+
 function ContactWindow({ onClose }: { onClose: () => void }) {
   const contactItems = [
     { icon: 'fa-regular fa-envelope', label: '邮箱', value: '13104899857@163.com', href: 'mailto:13104899857@163.com', hoverTitle: '点击即可发送邮件', hoverSubtitle: '将打开默认邮箱应用' },
@@ -960,7 +1139,7 @@ function ContactWindow({ onClose }: { onClose: () => void }) {
   );
 }
 
-function Dock({ show, revealProgress, hoveredIcon, onHoverChange, onIconClick }: { show: boolean; revealProgress: number; hoveredIcon: string | null; onHoverChange: (iconName: string | null) => void; onIconClick: (iconName: string) => void }) {
+function Dock({ show, revealProgress, onIconClick }: { show: boolean; revealProgress: number; onIconClick: (iconName: string) => void }) {
   const [dockOrder, setDockOrder] = useState<string[]>(() => {
     if (typeof window === 'undefined') return [...DEFAULT_DOCK_ORDER];
 
@@ -971,6 +1150,7 @@ function Dock({ show, revealProgress, hoveredIcon, onHoverChange, onIconClick }:
     }
   });
   const [activeDragIcon, setActiveDragIcon] = useState<string | null>(null);
+  const [activeBubbleIcon, setActiveBubbleIcon] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -982,6 +1162,34 @@ function Dock({ show, revealProgress, hoveredIcon, onHoverChange, onIconClick }:
       // The reordered state still works for this page session.
     }
   }, [dockOrder]);
+
+  useEffect(() => {
+    if (!show) {
+      setActiveBubbleIcon(null);
+      return;
+    }
+
+    let lastIcon: string | null = null;
+    let hideTimer = 0;
+
+    const showRandomBubble = () => {
+      const candidates = DOCK_BUBBLE_IDS.filter((iconName) => iconName !== lastIcon);
+      const nextIcon = candidates[Math.floor(Math.random() * candidates.length)];
+      lastIcon = nextIcon;
+      setActiveBubbleIcon(nextIcon);
+      window.clearTimeout(hideTimer);
+      hideTimer = window.setTimeout(() => setActiveBubbleIcon(null), 2200);
+    };
+
+    const firstBubbleTimer = window.setTimeout(showRandomBubble, 650);
+    const bubbleInterval = window.setInterval(showRandomBubble, 4200);
+
+    return () => {
+      window.clearTimeout(firstBubbleTimer);
+      window.clearTimeout(hideTimer);
+      window.clearInterval(bubbleInterval);
+    };
+  }, [show]);
 
   return (
     <motion.div
@@ -1003,21 +1211,19 @@ function Dock({ show, revealProgress, hoveredIcon, onHoverChange, onIconClick }:
             <DockIcon
               key={iconName}
               iconName={iconName}
-              hoveredIcon={hoveredIcon}
               isDockDragging={activeDragIcon !== null}
+              showBubble={activeBubbleIcon === iconName}
               hasGroupGap={DOCK_GROUP_ENDS.has(index + 1)}
-              onHoverChange={onHoverChange}
               onIconClick={onIconClick}
               onDragStateChange={(isDragging) => {
                 setActiveDragIcon(isDragging ? iconName : null);
-                if (isDragging) onHoverChange(null);
               }}
             />
           ))}
           {DOCK_SEPARATOR_LEFTS.map((left) => (
             <div
               key={left}
-              className="pointer-events-none absolute bottom-1 h-[34px] w-px rounded-full bg-black/12 shadow-[1px_0_0_rgba(255,255,255,0.25)]"
+              className="pointer-events-none absolute bottom-1 h-[36px] w-px rounded-full bg-black/18 shadow-[1px_0_0_rgba(255,255,255,0.42)]"
               style={{ left }}
             />
           ))}
@@ -1037,19 +1243,19 @@ type DockPressGesture = {
   element: HTMLElement;
 };
 
-function DockIcon({ iconName, hoveredIcon, isDockDragging, hasGroupGap, onHoverChange, onIconClick, onDragStateChange }: {
+function DockIcon({ iconName, isDockDragging, showBubble, hasGroupGap, onIconClick, onDragStateChange }: {
   key?: React.Key;
   iconName: string;
-  hoveredIcon: string | null;
   isDockDragging: boolean;
+  showBubble: boolean;
   hasGroupGap: boolean;
-  onHoverChange: (iconName: string | null) => void;
   onIconClick: (iconName: string) => void;
   onDragStateChange: (isDragging: boolean) => void;
 }) {
   const dragControls = useDragControls();
   const gestureRef = useRef<DockPressGesture | null>(null);
   const suppressNextClickRef = useRef(false);
+  const dockLabel = DOCK_LABELS[iconName];
 
   useEffect(() => {
     return () => {
@@ -1138,10 +1344,6 @@ function DockIcon({ iconName, hoveredIcon, isDockDragging, hasGroupGap, onHoverC
       onPointerUp={endDockPress}
       onPointerCancel={cancelDockPress}
       onDragEnd={() => releaseGesture(true)}
-      onMouseEnter={() => {
-        if (!isDockDragging) onHoverChange(iconName);
-      }}
-      onMouseLeave={() => onHoverChange(null)}
       onContextMenu={(event) => event.preventDefault()}
       onClick={(event) => {
         if (suppressNextClickRef.current) {
@@ -1153,35 +1355,26 @@ function DockIcon({ iconName, hoveredIcon, isDockDragging, hasGroupGap, onHoverC
         onIconClick(iconName);
       }}
     >
-      {!isDockDragging && ENABLE_SAFARI_DOCK_ENTRY && iconName === '1-1' && hoveredIcon === '1-1' && (
-        <motion.div
-          className="pointer-events-none absolute -top-16 left-1/2 flex -translate-x-1/2 flex-col items-center"
-          initial={{ opacity: 0.92, y: 0, scale: 1 }}
-          animate={hoveredIcon === '1-1' ? { opacity: [0.92, 1, 0.92], y: [0, -4, 0], scale: [1, 1.06, 1] } : { opacity: 0, y: 0, scale: 0.98 }}
-          transition={{ duration: 1.9, ease: 'easeInOut', repeat: Infinity }}
-        >
-          <div className="whitespace-nowrap rounded-[18px] border border-white/80 bg-white px-4 py-2 text-[14px] font-bold tracking-[0.01em] text-[#121212] shadow-[0_14px_30px_rgba(0,0,0,0.22)]">
-            我的项目
-          </div>
-          <div className="-mt-1.5 h-3.5 w-3.5 rotate-45 rounded-[3px] border-r border-b border-black/5 bg-white shadow-[4px_4px_10px_rgba(0,0,0,0.06)]" />
-        </motion.div>
-      )}
-      {!isDockDragging && iconName === '1-2' && hoveredIcon === '1-2' && (
-        <motion.div
-          className="pointer-events-none absolute -top-16 left-1/2 flex -translate-x-1/2 flex-col items-center"
-          initial={{ opacity: 0.92, y: 0, scale: 1 }}
-          animate={hoveredIcon === '1-2' ? { opacity: [0.92, 1, 0.92], y: [0, -4, 0], scale: [1, 1.06, 1] } : { opacity: 0, y: 0, scale: 0.98 }}
-          transition={{ duration: 1.9, ease: 'easeInOut', repeat: Infinity }}
-        >
-          <div className="whitespace-nowrap rounded-[18px] border border-white/80 bg-white px-4 py-2 text-[14px] font-bold tracking-[0.01em] text-[#121212] shadow-[0_14px_30px_rgba(0,0,0,0.22)]">
-            联系我~
-          </div>
-          <div className="-mt-1.5 h-3.5 w-3.5 rotate-45 rounded-[3px] border-r border-b border-black/5 bg-white shadow-[4px_4px_10px_rgba(0,0,0,0.06)]" />
-        </motion.div>
-      )}
+      <AnimatePresence>
+        {!isDockDragging && showBubble && dockLabel && (
+          <motion.div
+            data-dock-label={iconName}
+            className="pointer-events-none absolute -top-16 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center"
+            initial={{ opacity: 0, y: 8, scale: 0.92 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 5, scale: 0.96 }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
+          >
+            <div className="whitespace-nowrap rounded-[18px] border border-white/80 bg-white px-4 py-2 text-[14px] font-bold text-[#121212] shadow-[0_14px_30px_rgba(0,0,0,0.22)]">
+              {dockLabel}
+            </div>
+            <div className="-mt-1.5 h-3.5 w-3.5 rotate-45 rounded-[3px] border-r border-b border-black/5 bg-white shadow-[4px_4px_10px_rgba(0,0,0,0.06)]" />
+          </motion.div>
+        )}
+      </AnimatePresence>
       <img
         src={`/dock-icons/${iconName}.png`}
-        alt={iconName}
+        alt={dockLabel ?? iconName}
         className={`h-[46px] w-[46px] rounded-[10px] object-contain drop-shadow-[0_6px_9px_rgba(0,0,0,0.15)] transition-[width,height] duration-200 ${isDockDragging ? '' : 'group-hover:h-[52px] group-hover:w-[52px]'}`}
         draggable={false}
       />

@@ -1,17 +1,17 @@
 export const DEFAULT_DOCK_ORDER = [
   '1-1',
   '1-2',
+  '2-1',
   '1-3',
   '1-4',
-  '2-1',
   '2-2',
   '3-1',
   '3-2',
   '4-1',
 ] as const;
 
-export const DOCK_GROUP_ENDS = new Set([4, 6, 8]);
-export const DOCK_ORDER_STORAGE_KEY = 'zerinnblog:dock-order:v1';
+export const DOCK_GROUP_ENDS = new Set([4, 8]);
+export const DOCK_ORDER_STORAGE_KEY = 'zerinnblog:dock-order:v3';
 
 export function normalizeDockOrder(value: unknown): string[] {
   const allowed = new Set<string>(DEFAULT_DOCK_ORDER);

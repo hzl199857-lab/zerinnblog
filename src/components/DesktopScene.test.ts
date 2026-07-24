@@ -9,10 +9,16 @@ test('desktop background does not animate blur during unlock handoff', () => {
   assert.doesNotMatch(file, /transition-\[filter\]/);
 });
 
-test('safari dock entry shows the projects tooltip', () => {
-  assert.match(file, /const ENABLE_SAFARI_DOCK_ENTRY = true;/);
-  assert.match(file, /ENABLE_SAFARI_DOCK_ENTRY && iconName === '1-1' && hoveredIcon === '1-1'/);
-  assert.match(file, /我的项目/);
+test('dock randomly cycles bubbles for the three primary icons', () => {
+  assert.match(file, /const DOCK_LABELS: Record<string, string>/);
+  assert.match(file, /const DOCK_BUBBLE_IDS = \['1-1', '1-2', '2-1'\]/);
+  assert.match(file, /data-dock-label=\{iconName\}/);
+  assert.match(file, /const dockLabel = DOCK_LABELS\[iconName\]/);
+  assert.match(file, /setInterval\(showRandomBubble, 4200\)/);
+  assert.match(file, /setTimeout\(\(\) => setActiveBubbleIcon\(null\), 2200\)/);
+  assert.match(file, /showBubble=\{activeBubbleIcon === iconName\}/);
+  assert.doesNotMatch(file, /'1-3': 'Illustrator'/);
+  assert.doesNotMatch(file, /hoveredIcon === '1-1'/);
 });
 
 test('safari dock opens the Prompt Catcher project in a native browser shell', () => {
@@ -26,20 +32,23 @@ test('safari dock opens the Prompt Catcher project in a native browser shell', (
   assert.doesNotMatch(file, /kv\.zerinnai\.online/);
 });
 
-test('dock blur treatment applies to projects and contact hover', () => {
-  assert.match(file, /const isDockTooltipHovered = hoveredDockIcon === '1-1' \|\| hoveredDockIcon === '1-2';/);
-  assert.match(file, /filter: isDockTooltipHovered \? 'blur\(12px\)' : undefined/);
-  assert.match(file, /\{isDockTooltipHovered && \(/);
+test('random dock bubbles do not blur the desktop', () => {
+  assert.doesNotMatch(file, /isDockTooltipHovered/);
+  assert.doesNotMatch(file, /hoveredDockIcon/);
+  assert.doesNotMatch(file, /filter: .*blur\(12px\)/);
 });
 
-test('contact dock bubble uses larger label sizing', () => {
-  assert.match(file, /text-\[14px\][^\n]*font-bold/);
-  assert.match(file, /px-4 py-2/);
+test('dock bubbles use the original white callout styling with more spacing', () => {
+  assert.match(file, /data-dock-label=\{iconName\}[\s\S]*-top-16/);
+  assert.match(file, /rounded-\[18px\][^\n]*bg-white px-4 py-2 text-\[14px\] font-bold/);
+  assert.doesNotMatch(file, /backdrop-blur-\[22px\]/);
+  assert.doesNotMatch(file, /backdrop-saturate-\[180%\]/);
 });
 
-test('contact dock bubble includes looping attention animation', () => {
-  assert.match(file, /animate=\{hoveredIcon === '1-2' \? \{[^}]*scale:/s);
-  assert.match(file, /transition=\{\{[^}]*repeat: Infinity/s);
+test('dock bubbles are not hover-gated', () => {
+  assert.doesNotMatch(file, /hoveredIcon === '1-2'/);
+  assert.match(file, /!isDockDragging && showBubble && dockLabel/);
+  assert.doesNotMatch(file, /repeat: Infinity/);
 });
 
 test('dock uses a 150 ms pointer long press gesture', () => {
